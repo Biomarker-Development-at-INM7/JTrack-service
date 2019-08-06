@@ -149,9 +149,29 @@ def generate_record_id(data, ip):
     return rid
 
 
+# add uploaded files in folders according to BIDS format
 def processData(d):
     timestamp = datetime.date.today().isoformat()
-    target_dir = '/mnt/jutrack_data/' + d['studyID'] + '/' + d['userID'] + '/' + d['deviceID'] + '/' + d['data_name'] +'/'
+# check for folders and create if nessessary
+    storage_folder = '/mnt/jutrack_data'
+
+    study_folder = storage_folder + '/' + d['studyID']
+    if not os.path.isdir(study_folder):
+        os.mkdir(study_folder) 
+
+    user_folder = study_folder + '/' + d['userID']
+    if not os.path.isdir(user_folder):
+        os.mkdir(user_folder)
+
+    device_folder = user_folder + '/' + d['deviceID']
+    if not os.path.isdir(device_folder):
+        os.mkdir(device_folder)
+
+    data_folder = device_folder + '/' + d['data_name']
+    if not os.path.isdir(data_folder):
+        os.mkdir(data_folder)
+
+    target_dir = data_folder +'/'
     target_file = d['studyID'] + '_' + d['userID'] + '_' + d['deviceID'] + '_' + d['data_name'] + '_' + timestamp + '.json'
 
     filename = targetdir + target_file
@@ -208,7 +228,7 @@ def application(environ, start_response):
                     status = '402 File already exists'
                     output = 'No changes made'
                 else:
-                print(outputFile + " written to disc.")
+                    print(outputFile + " written to disc.")
             # elif 'query_type' in data:
 
             # get/generate the needed info to save
