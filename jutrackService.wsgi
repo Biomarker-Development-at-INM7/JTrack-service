@@ -1,5 +1,4 @@
 import os
-from wsgiref.simple_server import make_server
 
 import hashlib
 import json
@@ -12,8 +11,7 @@ __version__ = 0
 opj = os.path.join
 
 cwd = os.path.dirname(__file__)
-private_dir = opj('/mnt/jutrack/records/private')
-# public_dir = opj('/mnt/jutrack/records/public')
+
 utc_now = datetime.datetime.now().strftime('%Y.%m.%d-%H.%M.%S')
 
 valid_data = ['accelerometer', 'activity', 'application usage', 'barometer', 'gravity sensor', 'gyroscope', 'location',
@@ -36,78 +34,6 @@ valid_study = ['ID', 'name', 'description']
 
 valid_user_study = ['userID', 'studyID', 'joinedTimeStamp', 'isActive', 'leftTimestamp']
 valid_user_device = ['userID', 'deviceID', 'startTimeStamp', 'endTimeStamp', 'status']
-
-
-def add_accelerometer_data(data, studyID, userID, deviceID, timestamp):
-    targetdir = studyID+'/'+userID+'/'+deviceID+'/accelerometer/'
-    filename = targetdir + studyID+'_'+userID+'_'+deviceID+'_accelerometer_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    return filename
-
-
-def add_activity_data(data, studyID, userID, deviceID, timestamp):
-    targetdir = studyID + '/' + userID + '/' + deviceID + '/activity/'
-    filename = targetdir + studyID+'_'+userID+'_'+deviceID+'_activity_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    return filename
-
-
-def add_application_usage_data(data, studyID, userID, deviceID, timestamp):
-    targetdir = studyID + '/' + userID + '/' + deviceID + '/application_usage/'
-    filename = targetdir + studyID+'_'+userID+'_'+deviceID+'_application_usage_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    return filename
-
-
-def add_barometer_data(data, studyID, userID, deviceID, timestamp):
-    targetdir = studyID + '/' + userID + '/' + deviceID + '/barometer/'
-    filename = targetdir + studyID+'_'+userID+'_'+deviceID+'_barometer_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    return filename
-
-
-def add_gravity_sensor_data(data, studyID, userID, deviceID, timestamp):
-    targetdir = studyID + '/' + userID + '/' + deviceID + '/gravity_sensor/'
-    filename = targetdir + studyID+'_'+userID+'_'+deviceID+'_gravity_sensor_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    return filename
-
-
-def add_gyroscope_data(data, studyID, userID, deviceID, timestamp):
-    targetdir = studyID + '/' + userID + '/' + deviceID + '/gyroscope/'
-    filename = targetdir + studyID+'_'+userID+'_'+deviceID+'_gyroscope_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    return filename
-
-
-def add_location_data(data, studyID, userID, deviceID, timestamp):
-    targetdir = studyID + '/' + userID + '/' + deviceID + '/location/'
-    filename = targetdir + studyID+'_'+userID+'_'+deviceID+'_location_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    return filename
-
-
-def add_magnetic_sensor_data(data, studyID, userID, deviceID, timestamp):
-    targetdir = studyID + '/' + userID + '/' + deviceID + '/magnetic_sensor/'
-    filename = targetdir + studyID+'_'+userID+'_'+deviceID+'_magnetic_sensor_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    return filename
-
-
-def add_rotation_vector_data(data, studyID, userID, deviceID, timestamp):
-    targetdir = studyID + '/' + userID + '/' + deviceID + '/rotation_vector/'
-    filename = targetdir + studyID+'_'+userID+'_'+deviceID+'_rotation_vector_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    return filename
 
 
 # Device Handling
@@ -225,24 +151,17 @@ def generate_record_id(data, ip):
 
 def processData(d):
     timestamp = datetime.date.today().isoformat()
-    if d['data_name'] == 'accelerometer':
-        return add_accelerometer_data(d['content'], d['studyID'], d['userID'], d['deviceID'], timestamp)
-    elif d['data_name'] == 'activity':
-        return add_activity_data(d['content'], d['studyID'], d['userID'], d['deviceID'], timestamp)
-    elif d['data_name'] == 'application usage':
-        return add_application_usage_data(d['content'], d['studyID'], d['userID'], d['deviceID'], timestamp)
-    elif d['data_name'] == 'barometer':
-        return add_barometer_data(d['content'], d['studyID'], d['userID'], d['deviceID'], timestamp)
-    elif d['data_name'] == 'gravity sensor':
-        return add_gravity_sensor_data(d['content'], d['studyID'], d['userID'], d['deviceID'], timestamp)
-    elif d['data_name'] == 'gyroscope':
-        return add_gyroscope_data(d['content'], d['studyID'], d['userID'], d['deviceID'], timestamp)
-    elif d['data_name'] == 'location':
-        return add_location_data(d['content'], d['studyID'], d['userID'], d['deviceID'], timestamp)
-    elif d['data_name'] == 'magnetic sensor':
-        return add_magnetic_sensor_data(d['content'], d['studyID'], d['userID'], d['deviceID'], timestamp)
-    elif d['data_name'] == 'rotation vector':
-        return add_rotation_vector_data(d['content'], d['studyID'], d['userID'], d['deviceID'], timestamp)
+    target_dir = d['studyID'] + '/' + d['userID'] + '/' + d['deviceID'] + '/' + d['data_name'] +'/'
+    target_file = d['studyID'] + '_' + d['userID'] + '_' + d['deviceID'] + '_' + d['data_name'] + '_' + timestamp + '.json'
+
+    filename = targetdir + target_file
+
+    if os.path.isfile(filename):
+        return ""
+
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(d['content'], f, ensure_ascii=False, indent=4)
+    return filename
 
 
 def is_valid_data(d):
@@ -284,6 +203,11 @@ def application(environ, start_response):
         if is_valid_data(data):
             if 'data_name' in data:
                 outputFile = processData(data)
+
+                if outputFile == "":
+                    status = '402 File already exists'
+                    output = 'No changes made'
+                else:
                 print(outputFile + " written to disc.")
             # elif 'query_type' in data:
 
