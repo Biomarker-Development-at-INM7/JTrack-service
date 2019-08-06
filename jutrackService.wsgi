@@ -38,9 +38,9 @@ valid_user_device = ['userID', 'deviceID', 'startTimeStamp', 'endTimeStamp', 'st
 
 # Device Handling
 def add_device(data, deviceID):
-    filename = 'device_'+deviceID+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    filename = 'device_' + deviceID + '.json'
+    with open(filename, 'w', encoding = 'utf-8') as f:
+        json.dump(data, f, ensure_ascii = False, indent = 4)
     return filename
 
 
@@ -48,21 +48,21 @@ def deactivate_device(deviceID):
     filename = 'device_' + deviceID + '.json'
     if os.path.isfile(filename):
         os.rename(filename, 'device_' + deviceID + '_inactive.json')
-        print('Device '+deviceID+' set to inactive!')
+        print('Device ' + deviceID + ' set to inactive!')
 
 
 def reactivate_device(deviceID):
     filename = 'device_' + deviceID + '_inactive.json'
     if os.path.isfile(filename):
         os.rename(filename, 'device_' + deviceID + '.json')
-        print('Device '+deviceID+' set back to active!')
+        print('Device ' + deviceID + ' set back to active!')
 
 
 # User Handling
 def add_user(data, userID):
-    filename = 'user_'+userID+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    filename = 'user_' + userID + '.json'
+    with open(filename, 'w', encoding = 'utf-8') as f:
+        json.dump(data, f, ensure_ascii = False, indent = 4)
     return filename
 
 
@@ -70,21 +70,21 @@ def deactivate_user(userID):
     filename = 'user_' + userID + '.json'
     if os.path.isfile(filename):
         os.rename(filename, 'user_' + userID + '_inactive.json')
-        print('User '+userID+' set to inactive!')
+        print('User ' + userID + ' set to inactive!')
 
 
 def reactivate_user(userID):
     filename = 'user_' + userID + '_inactive.json'
     if os.path.isfile(filename):
         os.rename(filename, 'user_' + userID + '.json')
-        print('User '+userID+' set back to active!')
+        print('User ' + userID + ' set back to active!')
 
 
 # Study Handling
 def add_study(data, studyID):
-    filename = 'study_'+studyID+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    filename = 'study_' + studyID + '.json'
+    with open(filename, 'w', encoding = 'utf-8') as f:
+        json.dump(data, f, ensure_ascii = False, indent = 4)
     return filename
 
 
@@ -104,29 +104,29 @@ def reactivate_study(studyID):
 
 # User <-> Study
 def add_study_to_user(userID, studyID, timestamp, data):
-    filename = 'user' + userID + '_study' + studyID + '_joined_'+timestamp+'.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    filename = 'user' + userID + '_study' + studyID + '_joined_' + timestamp + '.json'
+    with open(filename, 'w', encoding = 'utf-8') as f:
+        json.dump(data, f, ensure_ascii = False, indent = 4)
     print('Study ' + studyID + ' set for user ' + userID + '!')
 
 
 def remove_study_from_user(userID, studyID, timestamp):
     for filename in glob.glob('user' + userID + '_study' + studyID + '_joined_*.json'):
-        os.rename(filename, filename[:-5]+'_inactive_left_'+timestamp+'.json')
-        print('Study ' + studyID + ' set to inactive for user '+userID+'!')
+        os.rename(filename, filename[:-5] + '_inactive_left_' + timestamp+'.json')
+        print('Study ' + studyID + ' set to inactive for user ' + userID + '!')
 
 
 # User <-> Device
 def add_device_to_user(userID, deviceID, timestamp, data):
     filename = 'user' + userID + '_device' + deviceID + '_lend_' + timestamp + '.json'
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    with open(filename, 'w', encoding = 'utf-8') as f:
+        json.dump(data, f, ensure_ascii = False, indent = 4)
 
 
 def remove_device_from_user(userID, deviceID, timestamp):
     for filename in glob.glob('user' + userID + '_device' + deviceID + '_lend_*.json'):
-        os.rename(filename, filename[:-5]+'_given_back_'+timestamp+'.json')
-        print('Device ' + deviceID + ' was given back by user '+userID+'!')
+        os.rename(filename, filename[:-5] + '_given_back_' + timestamp + '.json')
+        print('Device ' + deviceID + ' was given back by user ' + userID + '!')
 
 
 # General methods
@@ -151,7 +151,7 @@ def generate_record_id(data, ip):
 
 def processData(d):
     timestamp = datetime.date.today().isoformat()
-    target_dir = d['studyID'] + '/' + d['userID'] + '/' + d['deviceID'] + '/' + d['data_name'] +'/'
+    target_dir = '/mnt/jutrack_data/' + d['studyID'] + '/' + d['userID'] + '/' + d['deviceID'] + '/' + d['data_name'] +'/'
     target_file = d['studyID'] + '_' + d['userID'] + '_' + d['deviceID'] + '_' + d['data_name'] + '_' + timestamp + '.json'
 
     filename = targetdir + target_file
@@ -159,8 +159,8 @@ def processData(d):
     if os.path.isfile(filename):
         return ""
 
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(d['content'], f, ensure_ascii=False, indent=4)
+    with open(filename, 'w', encoding = 'utf-8') as f:
+        json.dump(d['content'], f, ensure_ascii = False, indent = 4)
     return filename
 
 
