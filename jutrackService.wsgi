@@ -155,24 +155,29 @@ def processData(d):
 # check for folders and create if nessessary
     storage_folder = '/mnt/jutrack_data'
 
-    study_folder = storage_folder + '/' + d['studyID']
+    studyID = d[0]['studyId']
+    userID = d[0]['username']
+    deviceID = d[0]['deviceid']
+    data_name = d[0]['sensorname']
+
+    study_folder = storage_folder + '/' + studyID
     if not os.path.isdir(study_folder):
         os.mkdir(study_folder) 
 
-    user_folder = study_folder + '/' + d['userID']
+    user_folder = study_folder + '/' + userID
     if not os.path.isdir(user_folder):
         os.mkdir(user_folder)
 
-    device_folder = user_folder + '/' + d['deviceID']
+    device_folder = user_folder + '/' + deviceID
     if not os.path.isdir(device_folder):
         os.mkdir(device_folder)
 
-    data_folder = device_folder + '/' + d['data_name']
+    data_folder = device_folder + '/' + data_name
     if not os.path.isdir(data_folder):
         os.mkdir(data_folder)
 
     target_dir = data_folder +'/'
-    target_file = d['studyID'] + '_' + d['userID'] + '_' + d['deviceID'] + '_' + d['data_name'] + '_' + timestamp + '.json'
+    target_file = studyID + '_' + userID + '_' + deviceID + '_' + data_name + '_' + timestamp + '.json'
 
     filename = targetdir + target_file
 
@@ -180,7 +185,7 @@ def processData(d):
         return ""
 
     with open(filename, 'w', encoding = 'utf-8') as f:
-        json.dump(d['content'], f, ensure_ascii = False, indent = 4)
+        json.dump(d, f, ensure_ascii = False, indent = 4)
     return filename
 
 
@@ -222,7 +227,7 @@ def application(environ, start_response):
 
         if is_valid_data(data):
             if 'data_name' in data:
-                outputFile = processData(data)
+                outputFile = processData(data['content'])
 
                 if outputFile == "":
                     status = '402 File already exists'
