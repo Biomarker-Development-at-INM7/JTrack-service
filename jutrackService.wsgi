@@ -204,11 +204,11 @@ def is_valid_data(d):
 
 def md5_matches(md5, calcMD5):
     print('received MD5:' + md5 + ', calculated MD5:' + calcMD5)
-    if calcMD5 != md5:
+    if calcMD5 == md5:
         print("MD5 correct")
         return True
     else:
-        print("MD% mismatch")
+        print("MD5 mismatch")
         return False
 
 
