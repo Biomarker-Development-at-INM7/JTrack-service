@@ -191,25 +191,31 @@ def processData(d):
 
 def is_valid_data(d):
     """Perform all possible tests and return a flag"""
-    if 'content' not in d:
+    if len(d) == 0:
         return False
-    else:
-        calcMD5 = hashlib.md5(d["content"].encode('utf-8')).hexdigest()
-        md5 = d["md5"]
-        if calcMD5 != md5:
-            return False
 
-    if 'data_name' in d:
-        if d['data_name'] not in valid_data:
+    if 'sensorname' in d[0]:
+        if d[0]['sensorname'] not in valid_data:
             # we only play with stuff we know...
             return False
 
     return True
 
 
+def md5_matches(md5, calcMD5):
+    print('received MD5:' + md5 + ', calculated MD5:' + calcMD5)
+    if calcMD5 != md5:
+        print("MD5 correct")
+        return True
+    else:
+        print("MD% mismatch")
+        return False
+
+
 def application(environ, start_response):
     status = '404 Not Found'
     output = ''
+    print(str(environ))    
 
     if environ['REQUEST_METHOD'] == 'POST':
         try:
@@ -217,40 +223,49 @@ def application(environ, start_response):
         except ValueError:
             request_body_size = 0
 
-        request_body = environ['wsgi.input'].read(request_body_size)
+        request_body = environ['wsgi.input'].read()
+        print('BODY: ' + str(request_body))
+        md5 = environ['HTTP_MD5']
+        # headers = json.loads(request_headers) 
+        # md5 = headers['md5']
 
         try:
+            calcMD5 = hashlib.md5(request_body).hexdigest()
             data = json.loads(request_body)  # form content as decoded JSON
         except:
             data = {}
             status = '400 Bad Request'
 
-        if is_valid_data(data):
-            if 'data_name' in data:
-                outputFile = processData(data['content'])
+        if md5_matches(md5, calcMD5):
+            if is_valid_data(data, md5, calcMD5):
+                if 'data_name' in data:
+                    outputFile = processData(data)
 
-                if outputFile == "":
-                    status = '402 File already exists'
-                    output = 'No changes made'
-                else:
-                    print(outputFile + " written to disc.")
-            # elif 'query_type' in data:
+                    if outputFile == "":
+                        status = '402 File already exists'
+                        output = 'No changes made'
+                    else:
+                        print(outputFile + " written to disc.")
+                # elif 'query_type' in data:
 
-            # get/generate the needed info to save
-            client_ip = get_client_ip(environ)
-            client_agent = get_client_agent(environ)
-            record_id = generate_record_id(data, client_ip)
+                # get/generate the needed info to save
+                client_ip = get_client_ip(environ)
+                client_agent = get_client_agent(environ)
+                record_id = generate_record_id(data, client_ip)
 
-            # record = json.dumps(data)
-            # save private file (ip and date/time)
-            # with open(opj(survey_priv_dir, record_id), 'w') as _file:
-            #     _file.write(json.dumps({'ip': client_ip, 'agent': client_agent, 'dt': utc_now}))
+                # record = json.dumps(data)
+                # save private file (ip and date/time)
+                # with open(opj(survey_priv_dir, record_id), 'w') as _file:
+                #     _file.write(json.dumps({'ip': client_ip, 'agent': client_agent, 'dt': utc_now}))
 
-            output = 'success.html'
+                output = 'Data successfully uploaded'
+            else:
+                status = '400 Bad Request'
+                # TODO: should be an error of some kind
+                output = 'Invalid data!'
         else:
-            status = '400 Bad Request'
-            # TODO: should be an error of some kind
-            output = 'Not like that my friend'
+            status = '402 Bad Data'
+            output = 'There has been a mismatch between the uploaded data and the received data, upload aborted!'
 
     # aaaaaand respond to client
     start_response('200 OK', [('Content-type', 'text/plain'),
