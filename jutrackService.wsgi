@@ -65,7 +65,7 @@ def is_valid_data(d):
     return True
 
 
-def clean_up_dict(d):
+def dict_to_ascii(d):
     for data_entry in range(0, len(d)):
         d[data_entry] = ast.literal_eval(json.dumps(d[data_entry]))
     return d
@@ -91,7 +91,7 @@ def application(environ, start_response):
         except:
             data = {}
 
-        data = clean_up_dict(data)
+        data = dict_to_ascii(data)
 
         if is_md5_matching(md5, calcMD5):
             if is_valid_data(data):
