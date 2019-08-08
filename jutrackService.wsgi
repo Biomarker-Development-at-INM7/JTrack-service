@@ -4,6 +4,7 @@ import hashlib
 import json
 import datetime
 import glob
+import ast
 
 # server version
 __version__ = 0
@@ -15,7 +16,7 @@ cwd = os.path.dirname(__file__)
 utc_now = datetime.datetime.now().strftime('%Y.%m.%d-%H.%M.%S')
 
 valid_data = ['accelerometer', 'activity', 'application usage', 'barometer', 'gravity sensor', 'gyroscope', 'location',
-              'magnetic sensor',  'rotation vector']
+              'magnetic sensor',  'rotation vector', 'K6DS3TR Acceleration Sensor']
 valid_accelerometer = ['ID', 'name', 'timestamp', 'deviceID', 'userID', 'X', 'Y', 'Z']
 valid_activity = ['ID', 'name', 'timestamp', 'deviceID', 'userID', 'activity type', 'confidence']
 valid_activity_type = ['in vehicle', 'on bicycle', 'on foot', 'still', 'unknown', 'tilting', 'walking', 'running']
@@ -179,27 +180,38 @@ def processData(d):
     target_dir = data_folder +'/'
     target_file = studyID + '_' + userID + '_' + deviceID + '_' + data_name + '_' + timestamp + '.json'
 
-    filename = targetdir + target_file
+    filename = target_dir + target_file
+    print(filename)
 
     if os.path.isfile(filename):
         return ""
 
-    with open(filename, 'w', encoding = 'utf-8') as f:
+    with open(filename, 'w') as f:
         json.dump(d, f, ensure_ascii = False, indent = 4)
     return filename
 
 
 def is_valid_data(d):
     """Perform all possible tests and return a flag"""
+    print(str(d) + ' type:' + str(type(d)))
+    print(str(d[0]) + ' type:' + str(type(d[0])))
+
     if len(d) == 0:
         return False
 
     if 'sensorname' in d[0]:
+        print(d[0]['sensorname'])
         if d[0]['sensorname'] not in valid_data:
             # we only play with stuff we know...
             return False
 
     return True
+
+
+def clean_up_dict(d):
+    for data_entry in range(0, len(d)):
+        d[data_entry] = ast.literal_eval(json.dumps(d[data_entry]))
+    return d
 
 
 def md5_matches(md5, calcMD5):
@@ -236,29 +248,29 @@ def application(environ, start_response):
             data = {}
             status = '400 Bad Request'
 
+        data = clean_up_dict(data)
+
         if md5_matches(md5, calcMD5):
-            if is_valid_data(data, md5, calcMD5):
-                if 'data_name' in data:
-                    outputFile = processData(data)
+            if is_valid_data(data):
+                outputFile = processData(data)
 
-                    if outputFile == "":
-                        status = '402 File already exists'
-                        output = 'No changes made'
-                    else:
-                        print(outputFile + " written to disc.")
-                # elif 'query_type' in data:
+                if outputFile == "":
+                    status = '402 File already exists'
+                    output = 'No changes made'
+                else:
+                    print(outputFile + " written to disc.")
 
-                # get/generate the needed info to save
+            # get/generate the needed info to save
                 client_ip = get_client_ip(environ)
                 client_agent = get_client_agent(environ)
                 record_id = generate_record_id(data, client_ip)
 
-                # record = json.dumps(data)
-                # save private file (ip and date/time)
-                # with open(opj(survey_priv_dir, record_id), 'w') as _file:
-                #     _file.write(json.dumps({'ip': client_ip, 'agent': client_agent, 'dt': utc_now}))
-
+            # record = json.dumps(data)
+            # save private file (ip and date/time)
+            # with open(opj(survey_priv_dir, record_id), 'w') as _file:
+            #     _file.write(json.dumps({'ip': client_ip, 'agent': client_agent, 'dt': utc_now}))
                 output = 'Data successfully uploaded'
+            
             else:
                 status = '400 Bad Request'
                 # TODO: should be an error of some kind
