@@ -190,7 +190,7 @@ def processData(d):
 
 
 def is_valid_data(d):
-    """Perform all possible tests and return flag"""
+    """Perform all possible tests and return a flag"""
     if 'content' not in d:
         return False
     else:
