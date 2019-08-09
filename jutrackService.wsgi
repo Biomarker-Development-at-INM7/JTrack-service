@@ -77,12 +77,6 @@ def is_valid_data(d):
     return True
 
 
-def dict_to_ascii(d):
-    for data_entry in range(0, len(d)):
-        d[data_entry] = ast.literal_eval(json.dumps(d[data_entry]))
-    return d
-
-
 def is_md5_matching(md5, calc_md5):
     if calc_md5 == md5:
         return True
@@ -99,8 +93,6 @@ def application(environ, start_response):
 
         calc_md5 = hashlib.md5(request_body).hexdigest()
         data = json.loads(request_body)  # form content as decoded JSON
-
-        data = dict_to_ascii(data)
 
         if is_md5_matching(md5, calc_md5):
             if is_valid_data(data):
