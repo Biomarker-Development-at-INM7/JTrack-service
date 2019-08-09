@@ -121,5 +121,6 @@ def application(environ, start_response):
             output = 'MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!'
 
     # aaaaaand respond to client
-    start_response('200 OK', [('Content-type', 'text/plain')])  # ,('Content-Length', str(len(output)))])
-    return [output]
+    start_response('200 OK', [('Content-type', 'application/json')])  # ,('Content-Length', str(len(output)))])
+    output_dict = data[0]
+    return json.dumps(output_dict)
