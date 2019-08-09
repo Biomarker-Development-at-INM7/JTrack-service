@@ -17,7 +17,8 @@ valid_data = [
     'gyroscope',
     'location',
     'magnetic sensor',
-    'rotation vector'
+    'rotation vector',
+    'linear acceleration'
 ]
 
 storage_folder = '/mnt/jutrack_data'
