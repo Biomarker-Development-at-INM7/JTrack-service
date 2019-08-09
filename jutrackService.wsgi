@@ -90,7 +90,10 @@ def application(environ, start_response):
 
     if environ['REQUEST_METHOD'] == 'POST':
         request_body = environ['wsgi.input'].read()
-        md5 = environ['HTTP_MD5']
+        if 'HTTP_MD5' in environ:
+            md5 = environ['HTTP_MD5']
+        else:
+            md5 = environ['HTTP_CONTENT-MD5']
 
         calc_md5 = hashlib.md5(request_body).hexdigest()
         data = json.loads(request_body)  # form content as decoded JSON
@@ -104,12 +107,12 @@ def application(environ, start_response):
                 else:
                     print(output_file + " written to disc.")
 
-                output = 'Data successfully uploaded'
+                output = 'SUCCESS: Data successfully uploaded'
 
             else:
-                output = 'Invalid data!'
+                output = 'INVALID DATA: The Data might be empty or the sensorname key is not allowed!'
         else:
-            output = 'There has been a mismatch between the uploaded data and the received data, upload aborted!'
+            output = 'MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!'
 
     # aaaaaand respond to client
     start_response('200 OK', [('Content-type', 'text/plain'),
