@@ -89,7 +89,12 @@ def application(environ, start_response):
     output = ''
 
     if environ['REQUEST_METHOD'] == 'POST':
-        request_body = environ['wsgi.input'].read()
+        try:
+            request_body = environ['wsgi.input'].read()
+        except ValueError:
+            start_response('500 Internal Server Error: ValueError occured during JSON parsing!', [('Content-type', 'application/json')])
+            return {"message": "The wsgi service was not able to parse the json content."}
+
         if 'HTTP_MD5' in environ:
             md5 = environ['HTTP_MD5']
         else:
@@ -112,9 +117,9 @@ def application(environ, start_response):
             else:
                 output = 'INVALID DATA: The Data might be empty or the sensorname key is not allowed!'
         else:
+            print('expected MD5: ' + str(calc_md5) + ', received MD5: ' + str(md5)) 
             output = 'MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!'
 
     # aaaaaand respond to client
-    start_response('200 OK', [('Content-type', 'text/plain'),
-                              ('Content-Length', str(len(output)))])
-    return [output]
+    start_response('200 OK', [('Content-type', 'application/json')])  # ,('Content-Length', str(len(output)))])
+    return {"message": output}
