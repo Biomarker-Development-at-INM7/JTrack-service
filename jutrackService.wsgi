@@ -11,14 +11,14 @@ __version__ = 0
 valid_data = [
     'accelerometer',
     'activity',
-    'application usage',
+    'application_usage',
     'barometer',
-    'gravity sensor',
+    'gravity_sensor',
     'gyroscope',
     'location',
-    'magnetic sensor',
-    'rotation vector',
-    'linear acceleration'
+    'magnetic_sensor',
+    'rotation_vector',
+    'linear_acceleration'
 ]
 
 storage_folder = '/mnt/jutrack_data'
