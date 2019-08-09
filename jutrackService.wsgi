@@ -38,7 +38,7 @@ def store_file(d):
 
     data_folder = storage_folder + '/' + study_id + '/' + user_id + '/' + device_id + '/' + data_name
     if not os.path.isdir(data_folder):
-        os.makedird(data_folder)
+        os.makedirs(data_folder)
 
     target_file = data_folder + '/' + study_id + '_' + user_id + '_' + device_id + '_' + data_name + '_' + timestamp \
         + '.json'
