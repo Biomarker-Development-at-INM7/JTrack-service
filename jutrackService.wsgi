@@ -92,8 +92,8 @@ def application(environ, start_response):
         try:
             request_body = environ['wsgi.input'].read()
         except ValueError:
-            start_response('500 Internal Server Error: ValueError occured during JSON parsing!', [('Content-type', 'application/json')])
-            return {"message": "The wsgi service was not able to parse the json content."}
+            start_response('500 Internal Server Error: ValueError occured during JSON parsing!', [('Content-type', 'text/plain')])
+            return ["The wsgi service was not able to parse the json content."]
 
         if 'HTTP_MD5' in environ:
             md5 = environ['HTTP_MD5']
@@ -121,5 +121,5 @@ def application(environ, start_response):
             output = 'MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!'
 
     # aaaaaand respond to client
-    start_response('200 OK', [('Content-type', 'application/json')])  # ,('Content-Length', str(len(output)))])
-    return {"message": output}
+    start_response('200 OK', [('Content-type', 'text/plain')])  # ,('Content-Length', str(len(output)))])
+    return [output]
