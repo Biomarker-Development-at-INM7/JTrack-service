@@ -91,7 +91,7 @@ def update_user(data):
     os.remove(file_name + '.json')
 
     # append status and if status is left from client or unknown add time_left for study leave
-    content[0]['status'] = status
+    content['status'] = status
     if status == 1:
         content['time_left'] = data['time_left']
     elif status == 3:
