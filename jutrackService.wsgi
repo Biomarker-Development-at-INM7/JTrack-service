@@ -189,7 +189,6 @@ def application(environ, start_response):
 
             calc_md5 = hashlib.md5(request_body).hexdigest()
             data = json.loads(request_body)  # form content as decoded JSON
-            print(str(data))
 
             if is_md5_matching(md5, calc_md5):
                 if is_valid_data(data):
