@@ -128,8 +128,8 @@ def perform_action(action, data):
         return 'SUCCESS: Data successfully uploaded'
     elif action == "add_user":
         output_file = add_user(data)
-        if output_file == "user exists:
-            print('No changes made')
+        if output_file == "user exists":
+            print("USER EXISTS: No changes made!")
             return "user exists"
         else:
             print(output_file + " written to disc.")
