@@ -84,9 +84,11 @@ def update_user(data):
 
     file_name = user_folder + '/' + study_id + '_' + user_id
 
-    with open(file_name + '.json') as f:
-        content = json.load(f)
-    os.remove(file_name + '.json')
+    if os.path.isfile(file_name + '.json'):
+        with open(file_name + '.json') as f:
+            content = json.load(f)
+    else:
+        return add_user(data)
 
     # append status and if status is left from client or unknown add time_left for study leave
     content['status'] = status
@@ -97,7 +99,9 @@ def update_user(data):
     elif status == 0:
         content['time_left'] = ''
         # Write to file and return the file name for logging
-    return write_file(file_name, content)
+    with open(file_name + '.json', 'w') as f:
+        json.dump(content, f, ensure_ascii=False, indent=4)
+    return file_name + '.json'
 
 
 # if a file already exists we do not want to loose data, so we store under a name with a counter as suffix
