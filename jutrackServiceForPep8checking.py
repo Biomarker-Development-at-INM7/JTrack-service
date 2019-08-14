@@ -52,11 +52,11 @@ def add_user(data):
     timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
         + str(i.second)
 
-    study_id = data[0]['studyId']
-    user_id = data[0]['username']
-    device_id = data[0]['deviceid']
+    study_id = data['studyId']
+    user_id = data['username']
+    device_id = data['deviceid']
 
-    data[0]['time_joined'] = timestamp
+    data['time_joined'] = timestamp
 
     # check for folder and create if a (sub-)folder does not exist
     if not os.path.isdir(user_folder):
@@ -65,7 +65,13 @@ def add_user(data):
     file_name = user_folder + '/' + study_id + '_' + user_id + '_' + device_id
 
     # Write to file and return the file name for logging
-    return write_file(file_name, data)
+    target_file = file_name + '.json'
+    if os.path.isfile(target_file):
+        return "user exists"
+    else:
+        with open(target_file, 'w') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        return target_file
 
 
 def update_user(data):
@@ -73,10 +79,10 @@ def update_user(data):
     timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
         + str(i.second)
 
-    study_id = data[0]['studyId']
-    user_id = data[0]['username']
-    device_id = data[0]['deviceid']
-    status = data[0]['status']
+    study_id = data['studyId']
+    user_id = data['username']
+    device_id = data['deviceid']
+    status = data['status']
 
     file_name = user_folder + '/' + study_id + '_' + user_id + '_' + device_id
 
@@ -87,11 +93,11 @@ def update_user(data):
     # append status and if status is left from client or unknown add time_left for study leave
     content[0]['status'] = status
     if status == 1:
-        content[0]['time_left'] = data[0]['time_left']
+        content['time_left'] = data['time_left']
     elif status == 3:
-        content[0]['time_left'] = timestamp
+        content['time_left'] = timestamp
     elif status == 0:
-        content[0]['time_left'] = ''
+        content['time_left'] = ''
         # Write to file and return the file name for logging
     return write_file(file_name, content)
 
@@ -144,12 +150,12 @@ def is_valid_data(d):
     if len(d) == 0:
         return False
 
-    if 'sensorname' in d[0]:
+    if 'status' in d:
+        return True
+    elif 'sensorname' in d[0]:
         if d[0]['sensorname'] not in valid_data:
             # we only play with stuff we know...
             return False
-    elif 'status' in d[0]:
-        return True
     else:
         return False
 
@@ -182,10 +188,14 @@ def application(environ, start_response):
 
             calc_md5 = hashlib.md5(request_body).hexdigest()
             data = json.loads(request_body)  # form content as decoded JSON
+            print(str(data))
 
             if is_md5_matching(md5, calc_md5):
                 if is_valid_data(data):
                     output = perform_action(action, data)
+                    if output == "user exists":
+                        start_response('422 Existing Data Error', [('Content-type', 'application/json')])
+                        return json.dumps({"message": "DATA-ERROR: The user you tried to add already exists!"})
                 else:
                     output = 'INVALID DATA: The Data might be empty or the sensorname key is not allowed!'
             else:
@@ -206,6 +216,9 @@ def application(environ, start_response):
 
     # aaaaaand respond to client
     start_response('200 OK', [('Content-type', 'application/json')])  # ,('Content-Length', str(len(output)))])
-    output_dict = data[0]
+    if 'status' in data:
+        output_dict = data
+    else:
+        output_dict = data[0]
     print(output)
     return json.dumps(output_dict)

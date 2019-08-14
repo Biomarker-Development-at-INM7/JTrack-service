@@ -151,7 +151,7 @@ def is_valid_data(d):
         return False
 
     if 'status' in d:
-        return True    
+        return True
     elif 'sensorname' in d[0]:
         if d[0]['sensorname'] not in valid_data:
             # we only play with stuff we know...
@@ -194,8 +194,7 @@ def application(environ, start_response):
                 if is_valid_data(data):
                     output = perform_action(action, data)
                     if output == "user exists":
-                        start_response('422 Existing Data Error',
-                               [('Content-type', 'application/json')])
+                        start_response('422 Existing Data Error', [('Content-type', 'application/json')])
                         return json.dumps({"message": "DATA-ERROR: The user you tried to add already exists!"})
                 else:
                     output = 'INVALID DATA: The Data might be empty or the sensorname key is not allowed!'
