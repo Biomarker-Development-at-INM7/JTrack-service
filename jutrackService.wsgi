@@ -54,7 +54,6 @@ def add_user(data):
 
     study_id = data['studyId']
     user_id = data['username']
-    device_id = data['deviceid']
 
     data['time_joined'] = timestamp
 
@@ -62,7 +61,7 @@ def add_user(data):
     if not os.path.isdir(user_folder):
         os.makedirs(user_folder)
 
-    file_name = user_folder + '/' + study_id + '_' + user_id + '_' + device_id
+    file_name = user_folder + '/' + study_id + '_' + user_id
 
     # Write to file and return the file name for logging
     target_file = file_name + '.json'
@@ -81,10 +80,9 @@ def update_user(data):
 
     study_id = data['studyId']
     user_id = data['username']
-    device_id = data['deviceid']
     status = data['status']
 
-    file_name = user_folder + '/' + study_id + '_' + user_id + '_' + device_id
+    file_name = user_folder + '/' + study_id + '_' + user_id
 
     with open(file_name + '.json') as f:
         content = json.load(f)
