@@ -3,7 +3,6 @@ import os
 import hashlib
 import json
 import datetime
-import ast
 
 # server version
 __version__ = 0
@@ -22,21 +21,21 @@ valid_data = [
 ]
 
 storage_folder = '/mnt/jutrack_data'
+user_folder = storage_folder + '/users'
 
 
 # add uploaded files in folders according to BIDS format
 def store_file(data):
     i = datetime.datetime.now()
-
     timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
         + str(i.second)
-    # check for folders and create if nessessary
 
     study_id = data[0]['studyId']
     user_id = data[0]['username']
     device_id = data[0]['deviceid']
     data_name = data[0]['sensorname']
 
+    # check for folder and create if a (sub-)folder does not exist
     data_folder = storage_folder + '/' + study_id + '/' + user_id + '/' + device_id + '/' + data_name
     if not os.path.isdir(data_folder):
         os.makedirs(data_folder)
@@ -45,6 +44,56 @@ def store_file(data):
 
     # Write to file and return the file name for logging
     return write_file(file_name, data)
+
+
+# stores user data (no personal data) in a new file
+def add_user(data):
+    i = datetime.datetime.now()
+    timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
+        + str(i.second)
+
+    study_id = data[0]['studyId']
+    user_id = data[0]['username']
+    device_id = data[0]['deviceid']
+
+    data[0]['time_joined'] = timestamp
+
+    # check for folder and create if a (sub-)folder does not exist
+    if not os.path.isdir(user_folder):
+        os.makedirs(user_folder)
+
+    file_name = user_folder + '/' + study_id + '_' + user_id + '_' + device_id
+
+    # Write to file and return the file name for logging
+    return write_file(file_name, data)
+
+
+def update_user(data):
+    i = datetime.datetime.now()
+    timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
+        + str(i.second)
+
+    study_id = data[0]['studyId']
+    user_id = data[0]['username']
+    device_id = data[0]['deviceid']
+    status = data[0]['status']
+
+    file_name = user_folder + '/' + study_id + '_' + user_id + '_' + device_id
+
+    with open(file_name + '.json') as f:
+        content = json.load(f)
+    os.remove(file_name + '.json')
+
+    # append status and if status is left from client or unknown add time_left for study leave
+    content[0]['status'] = status
+    if status == 1:
+        content[0]['time_left'] = data[0]['time_left']
+    elif status == 3:
+        content[0]['time_left'] = timestamp
+    elif status == 0:
+        content[0]['time_left'] = ''
+        # Write to file and return the file name for logging
+    return write_file(file_name, content)
 
 
 # if a file already exists we do not want to loose data, so we store under a name with a counter as suffix
@@ -62,6 +111,33 @@ def write_file(filename, data):
     return target_file
 
 
+def perform_action(action, data):
+    if action == "write_data":
+        output_file = store_file(data)
+        if output_file == "":
+            print('No changes made')
+        else:
+            print(output_file + " written to disc.")
+
+        return 'SUCCESS: Data successfully uploaded'
+    elif action == "add_user":
+        output_file = add_user(data)
+        if output_file == "":
+            print('No changes made')
+        else:
+            print(output_file + " written to disc.")
+
+        return 'SUCCESS: User successfully added'
+    elif action == "update_user":
+        output_file = update_user(data)
+        if output_file == "":
+            print('No changes made')
+        else:
+            print(output_file + " written to disc.")
+
+        return 'SUCCESS: User successfully updated'
+
+
 def is_valid_data(d):
     """Perform all possible tests and return a flag"""
 
@@ -72,6 +148,8 @@ def is_valid_data(d):
         if d[0]['sensorname'] not in valid_data:
             # we only play with stuff we know...
             return False
+    elif 'status' in d[0]:
+        return True
     else:
         return False
 
@@ -86,42 +164,48 @@ def is_md5_matching(md5, calc_md5):
 
 
 def application(environ, start_response):
-    output = ''
-
     if environ['REQUEST_METHOD'] == 'POST':
-        try:
-            request_body = environ['wsgi.input'].read()
-        except ValueError:
-            start_response('500 Internal Server Error: ValueError occured during JSON parsing!', [('Content-type', 'application/json')])
-            return json.dumps({"message": "The wsgi service was not able to parse the json content."})
+        if 'HTTP_ACTION' in environ:
+            action = environ['HTTP_ACTION']
 
-        if 'HTTP_MD5' in environ:
-            md5 = environ['HTTP_MD5']
-        else:
-            md5 = environ['HTTP_CONTENT-MD5']
+            try:
+                request_body = environ['wsgi.input'].read()
+            except ValueError:
+                start_response('500 Internal Server Error: ValueError occured during JSON parsing!',
+                               [('Content-type', 'application/json')])
+                return json.dumps({"message": "The wsgi service was not able to parse the json content."})
 
-        calc_md5 = hashlib.md5(request_body).hexdigest()
-        data = json.loads(request_body)  # form content as decoded JSON
-
-        if is_md5_matching(md5, calc_md5):
-            if is_valid_data(data):
-                output_file = store_file(data)
-
-                if output_file == "":
-                    print('No changes made')
-                else:
-                    print(output_file + " written to disc.")
-
-                output = 'SUCCESS: Data successfully uploaded'
-
+            if 'HTTP_MD5' in environ:
+                md5 = environ['HTTP_MD5']
             else:
-                output = 'INVALID DATA: The Data might be empty or the sensorname key is not allowed!'
+                md5 = environ['HTTP_CONTENT-MD5']
+
+            calc_md5 = hashlib.md5(request_body).hexdigest()
+            data = json.loads(request_body)  # form content as decoded JSON
+
+            if is_md5_matching(md5, calc_md5):
+                if is_valid_data(data):
+                    output = perform_action(action, data)
+                else:
+                    output = 'INVALID DATA: The Data might be empty or the sensorname key is not allowed!'
+            else:
+                print('expected MD5: ' + str(calc_md5) + ', received MD5: ' + str(md5))
+                start_response('500 Internal Server Error: There has been an MD5-MISMATCH!',
+                               [('Content-type', 'application/json')])
+                return json.dumps({"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data "
+                                              "+and the received data, upload aborted!"})
         else:
-            print('expected MD5: ' + str(calc_md5) + ', received MD5: ' + str(md5)) 
-            start_response('500 Internal Server Error: There has been an MD5-MISMATCH!', [('Content-type', 'application/json')])
-            return json.dumps({"message" : "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"})
+            start_response('500 Internal Server Error: There has been a KEY MISSING!',
+                           [('Content-type', 'application/json')])
+            return json.dumps({"message": "MISSING-KEY: There was no action-attribute defined, "
+                                          "+upload aborted!"})
+    else:
+        start_response('500 Internal Server Error: Wrong request type!',
+                       [('Content-type', 'application/json')])
+        return json.dumps({"message": "Expected POST-request!"})
 
     # aaaaaand respond to client
     start_response('200 OK', [('Content-type', 'application/json')])  # ,('Content-Length', str(len(output)))])
     output_dict = data[0]
+    print(output)
     return json.dumps(output_dict)
