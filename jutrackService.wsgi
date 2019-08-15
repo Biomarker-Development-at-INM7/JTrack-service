@@ -55,8 +55,6 @@ def add_user(data):
     study_id = data['studyId']
     user_id = data['username']
 
-    data['time_joined'] = timestamp
-
     # check for folder and create if a (sub-)folder does not exist
     if not os.path.isdir(user_folder):
         os.makedirs(user_folder)
