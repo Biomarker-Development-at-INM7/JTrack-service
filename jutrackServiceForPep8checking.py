@@ -48,21 +48,14 @@ def store_file(data):
 
 # stores user data (no personal data) in a new file
 def add_user(data):
-    i = datetime.datetime.now()
-    timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
-        + str(i.second)
-
     study_id = data['studyId']
     user_id = data['username']
-    device_id = data['deviceid']
-
-    data['time_joined'] = timestamp
 
     # check for folder and create if a (sub-)folder does not exist
     if not os.path.isdir(user_folder):
         os.makedirs(user_folder)
 
-    file_name = user_folder + '/' + study_id + '_' + user_id + '_' + device_id
+    file_name = user_folder + '/' + study_id + '_' + user_id
 
     # Write to file and return the file name for logging
     target_file = file_name + '.json'
@@ -74,6 +67,7 @@ def add_user(data):
         return target_file
 
 
+# update an already existent user. If the user is somehow not found, add him
 def update_user(data):
     i = datetime.datetime.now()
     timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
@@ -81,17 +75,18 @@ def update_user(data):
 
     study_id = data['studyId']
     user_id = data['username']
-    device_id = data['deviceid']
     status = data['status']
 
-    file_name = user_folder + '/' + study_id + '_' + user_id + '_' + device_id
+    file_name = user_folder + '/' + study_id + '_' + user_id
 
-    with open(file_name + '.json') as f:
-        content = json.load(f)
-    os.remove(file_name + '.json')
+    if os.path.isfile(file_name + '.json'):
+        with open(file_name + '.json') as f:
+            content = json.load(f)
+    else:
+        return add_user(data)
 
     # append status and if status is left from client or unknown add time_left for study leave
-    content[0]['status'] = status
+    content['status'] = status
     if status == 1:
         content['time_left'] = data['time_left']
     elif status == 3:
@@ -99,7 +94,9 @@ def update_user(data):
     elif status == 0:
         content['time_left'] = ''
         # Write to file and return the file name for logging
-    return write_file(file_name, content)
+    with open(file_name + '.json', 'w') as f:
+        json.dump(content, f, ensure_ascii=False, indent=4)
+    return file_name + '.json'
 
 
 # if a file already exists we do not want to loose data, so we store under a name with a counter as suffix
@@ -117,6 +114,7 @@ def write_file(filename, data):
     return target_file
 
 
+# Based on passed action term perform the action
 def perform_action(action, data):
     if action == "write_data":
         output_file = store_file(data)
@@ -128,8 +126,9 @@ def perform_action(action, data):
         return 'SUCCESS: Data successfully uploaded'
     elif action == "add_user":
         output_file = add_user(data)
-        if output_file == "":
-            print('No changes made')
+        if output_file == "user exists":
+            print("USER EXISTS: No changes made!")
+            return "user exists"
         else:
             print(output_file + " written to disc.")
 
@@ -144,6 +143,7 @@ def perform_action(action, data):
         return 'SUCCESS: User successfully updated'
 
 
+# compare data content with what is valid
 def is_valid_data(d):
     """Perform all possible tests and return a flag"""
 
@@ -162,6 +162,7 @@ def is_valid_data(d):
     return True
 
 
+# compare MD5 values
 def is_md5_matching(md5, calc_md5):
     if calc_md5 == md5:
         return True
@@ -169,11 +170,14 @@ def is_md5_matching(md5, calc_md5):
         return False
 
 
+# This method is called by the main endpoint
 def application(environ, start_response):
+    # We only accept POST-requests
     if environ['REQUEST_METHOD'] == 'POST':
         if 'HTTP_ACTION' in environ:
             action = environ['HTTP_ACTION']
 
+            # read request body
             try:
                 request_body = environ['wsgi.input'].read()
             except ValueError:
@@ -181,6 +185,7 @@ def application(environ, start_response):
                                [('Content-type', 'application/json')])
                 return json.dumps({"message": "The wsgi service was not able to parse the json content."})
 
+            # read passed MD5 value
             if 'HTTP_MD5' in environ:
                 md5 = environ['HTTP_MD5']
             else:
@@ -188,8 +193,8 @@ def application(environ, start_response):
 
             calc_md5 = hashlib.md5(request_body).hexdigest()
             data = json.loads(request_body)  # form content as decoded JSON
-            print(str(data))
 
+            # Check MD5 and content. If both is good perform actions
             if is_md5_matching(md5, calc_md5):
                 if is_valid_data(data):
                     output = perform_action(action, data)
