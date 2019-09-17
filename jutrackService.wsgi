@@ -3,6 +3,7 @@ import os
 import hashlib
 import json
 import datetime
+import sys
 
 # server version
 __version__ = 0
@@ -105,6 +106,8 @@ def write_file(filename, data):
     counter = 1
 
     while os.path.isfile(target_file):
+        sys.stderr.write(target_file + " was already existing, therefore " + filename + '_' + str(counter) + '.json'
+            + " will be created.\r\n")
         target_file = filename + '_' + str(counter) + '.json'
         counter += 1
 
