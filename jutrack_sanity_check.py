@@ -38,10 +38,12 @@ def go_through_detected_files(files, verbose):
                         print("NOTICE: The file " + file + " is a valid json file.")
                 except JSONDecodeError as e:
                     print("ERROR: The file " + file + " is not a valid json file. \tERROR-Message: " + e.msg)
+                json_file.close()
 
 
 if __name__ == "__main__":
     file_paths = get_files_in_folder(storage_folder)
-    #  Test-Environment: file_paths = get_files_in_folder("/Users/jfischer/GIT/JUGIT/JuTrackWSGI_Service/Test_dir/")
+    #  Test-Environment:
+    #  file_paths = get_files_in_folder("/Users/jfischer/GIT/JUGIT/JuTrackWSGI_Service/Test_dir/")
     go_through_detected_files(file_paths, define_environment())
     print("Check finished!")
