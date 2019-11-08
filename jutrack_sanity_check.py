@@ -1,6 +1,8 @@
+#!/usr/bin/python3
 import os
 import json
 import argparse
+import glob
 
 # define folder locations
 from json import JSONDecodeError
@@ -17,24 +19,29 @@ def define_environment():
 
 
 # check json in folders recursively
-def check_json_in_folder(folder_to_check, verbose):
-    for data_folder, subfolders, files in os.walk(folder_to_check):
-        for folder in subfolders:
-            check_json_in_folder(os.path.join(data_folder, folder), verbose)
+def get_files_in_folder(folder_to_check):
+    files = []
+    for name in glob.glob(folder_to_check + '/**/*.*', recursive=True):
+        files.append(name)
+    return files
 
-        for file in files:
-            file_path = os.path.join(data_folder, file)
-            if not file_path.endswith(".json"):
-                print("ERROR: The file " + file_path + " is not a json file.")
-            else:
-                with open(file_path) as json_file:
-                    try:
-                        json.load(json_file)
-                        if verbose:
-                            print("NOTICE: The file " + file_path + " is a valid json file.")
-                    except JSONDecodeError as e:
-                        print("ERROR: The file " + file_path + " is not a valid json file. \tERROR-Message: " + e.msg)
+
+def go_through_detected_files(files, verbose):
+    for file in files:
+        if not file.endswith(".json"):
+            print("ERROR: The file " + file + " is not a json file.")
+        else:
+            with open(file) as json_file:
+                try:
+                    json.load(json_file)
+                    if verbose:
+                        print("NOTICE: The file " + file + " is a valid json file.")
+                except JSONDecodeError as e:
+                    print("ERROR: The file " + file + " is not a valid json file. \tERROR-Message: " + e.msg)
 
 
 if __name__ == "__main__":
-    check_json_in_folder(storage_folder, define_environment())
+    file_paths = get_files_in_folder(storage_folder)
+    #  Test-Environment: file_paths = get_files_in_folder("/Users/jfischer/GIT/JUGIT/JuTrackWSGI_Service/Test_dir/")
+    go_through_detected_files(file_paths, define_environment())
+    print("Check finished!")
