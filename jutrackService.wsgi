@@ -4,6 +4,10 @@ import hashlib
 import json
 import datetime
 import sys
+from json import JSONDecodeError
+# TODO: from datalad.api import Dataset
+
+# ---------------------------------------CONFIGURATION
 
 # server version
 __version__ = 0
@@ -24,9 +28,116 @@ valid_data = [
 storage_folder = '/mnt/jutrack_data'
 user_folder = storage_folder + '/users'
 
+# ----------------------------------------VALIDATION-------------------------------------------------
+
+
+class JutrackError(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+
+class JutrackValidationError(JutrackError):
+    """Exception raised for unsuccessful validation of the json content.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
+# compare MD5 values
+def is_md5_matching(md5, calc_md5):
+    if calc_md5 == md5:
+        return True
+    else:
+        return False
+
+
+# compare data content with what is valid
+def is_valid_data(body, action, verbose = 0):
+    """Perform all possible tests and return a flag"""
+    is_valid_json(body)
+
+    if len(data) == 0:
+         raise JutrackValidationError("ERROR: The uploaded content was empty.")
+
+    if 'status' in data:
+        return data
+
+    # study_id = data[0]['studyId']
+    # user_id = data[0]['username']
+
+    # is_valid_study(study_id)
+    # is_valid_user(study_id, username)
+
+    if action == "write_data":
+        sensorname = data[0]['sensorname']
+        is_valid_sensor(sensorname)
+
+    return data
+
+
+def is_valid_json(body):
+    try:
+        data = json.load(body)
+        if verbose:
+            print("NOTICE: The uploaded content is valid json.")
+    except JSONDecodeError as e:
+       raise JutrackValidationError("ERROR: The uploaded content is not valid json. \tERROR-Message: " + e.msg)
+
+
+def is_valid_study(study_id):
+    if not os.path.isdir(data_folder+"/"+study_id):
+        raise JutrackValidationError("Invalid study detected: " + str(study_id))
+
+
+def is_valid_user(study_id, username):
+    if not os.path.isfile(user_folder+"/"+study_id+"_"+username + '.json'):
+        raise JutrackValidationError("Invalid user for study "+ study_id +" detected: " + str(username))
+
+
+def is_valid_sensor(sensorname):
+    if sensorname not in valid_data:
+        # we only play with stuff we know...
+        raise JutrackValidationError("Unaccepted sensorname detected: " + str(sensorname))
+
+
+# ----------------------------------------PREPARATION------------------------------------------------
+
+
+# Based on passed action term perform the action
+def perform_action(action, data):
+    if action == "write_data":
+        output_file = exec_file(data)
+        if output_file == "":
+            print('No changes made')
+        else:
+            print(output_file + " written to disc.")
+
+        return 'SUCCESS: Data successfully uploaded'
+    elif action == "add_user":
+        output_file = add_user(data)
+        if output_file == "user exists":
+            print("USER EXISTS: No changes made!")
+            return "user exists"
+        else:
+            print(output_file + " written to disc.")
+
+        return 'SUCCESS: User successfully added'
+    elif action == "update_user":
+        output_file = update_user(data)
+        if output_file == "":
+            print('No changes made')
+        else:
+            print(output_file + " written to disc.")
+
+        return 'SUCCESS: User successfully updated'
+
 
 # add uploaded files in folders according to BIDS format
-def store_file(data):
+def get_filename(data):
     i = datetime.datetime.now()
     timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
         + str(i.second)
@@ -42,9 +153,37 @@ def store_file(data):
         os.makedirs(data_folder)
 
     file_name = data_folder + '/' + study_id + '_' + user_id + '_' + device_id + '_' + data_name + '_' + timestamp
+    return file_name, study_id
 
-    # Write to file and return the file name for logging
-    return write_file(file_name, data)
+
+# if a file already exists we do not want to loose data, so we store under a name with a counter as suffix
+def write_file(filename, data, study_dataset):
+    target_file = filename + '.json'
+    counter = 1
+
+    while os.path.isfile(target_file):
+        sys.stderr.write(target_file + " was already existing, therefore " + filename + '_' + str(counter) + '.json'
+            + " will be created.\r\n")
+        target_file = filename + '_' + str(counter) + '.json'
+        counter += 1
+
+    with open(target_file, 'w') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+    # TODO: study_dataset.save(file, message="new file "+target_file+" for study")
+    # ds.publish(file, to="inm7")
+    # ds.drop(file)
+
+    return target_file
+
+
+# ----------------------------------------EXECUTION--------------------------------------------------
+
+
+def exec_file(data):
+    file_name, study_id = get_filename(data)
+    # TODO: datalad_dataset = Dataset(storage_folder+ "/"+study_id)
+    return write_file(file_name, data, datalad_dataset)
 
 
 # stores user data (no personal data) in a new file
@@ -65,6 +204,10 @@ def add_user(data):
     else:
         with open(target_file, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+
+        # TODO: datalad_dataset = Dataset(user_folder)
+        # datalad_dataset.save(file, message="new user "+user_id+" for study "+study_id)
+
         return target_file
 
 
@@ -97,80 +240,14 @@ def update_user(data):
         # Write to file and return the file name for logging
     with open(file_name + '.json', 'w') as f:
         json.dump(content, f, ensure_ascii=False, indent=4)
+
+     # TODO: datalad_dataset = Dataset(user_folder)
+     # datalad_dataset.save(file, message="updated user "+user_id+" for study "+study_id)
+
     return file_name + '.json'
 
 
-# if a file already exists we do not want to loose data, so we store under a name with a counter as suffix
-def write_file(filename, data):
-    target_file = filename + '.json'
-    counter = 1
-
-    while os.path.isfile(target_file):
-        sys.stderr.write(target_file + " was already existing, therefore " + filename + '_' + str(counter) + '.json'
-            + " will be created.\r\n")
-        target_file = filename + '_' + str(counter) + '.json'
-        counter += 1
-
-    with open(target_file, 'w') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-    return target_file
-
-
-# Based on passed action term perform the action
-def perform_action(action, data):
-    if action == "write_data":
-        output_file = store_file(data)
-        if output_file == "":
-            print('No changes made')
-        else:
-            print(output_file + " written to disc.")
-
-        return 'SUCCESS: Data successfully uploaded'
-    elif action == "add_user":
-        output_file = add_user(data)
-        if output_file == "user exists":
-            print("USER EXISTS: No changes made!")
-            return "user exists"
-        else:
-            print(output_file + " written to disc.")
-
-        return 'SUCCESS: User successfully added'
-    elif action == "update_user":
-        output_file = update_user(data)
-        if output_file == "":
-            print('No changes made')
-        else:
-            print(output_file + " written to disc.")
-
-        return 'SUCCESS: User successfully updated'
-
-
-# compare data content with what is valid
-def is_valid_data(d):
-    """Perform all possible tests and return a flag"""
-
-    if len(d) == 0:
-        return False
-
-    if 'status' in d:
-        return True
-    elif 'sensorname' in d[0]:
-        if d[0]['sensorname'] not in valid_data:
-            # we only play with stuff we know...
-            return False
-    else:
-        return False
-
-    return True
-
-
-# compare MD5 values
-def is_md5_matching(md5, calc_md5):
-    if calc_md5 == md5:
-        return True
-    else:
-        return False
+# ----------------------------------------APPLICATION------------------------------------------------
 
 
 # This method is called by the main endpoint
@@ -199,13 +276,14 @@ def application(environ, start_response):
 
             # Check MD5 and content. If both is good perform actions
             if is_md5_matching(md5, calc_md5):
-                if is_valid_data(data):
+                try:
+                    data = is_valid_data(body, action, 0)
                     output = perform_action(action, data)
                     if output == "user exists":
                         start_response('422 Existing Data Error', [('Content-type', 'application/json')])
                         return json.dumps({"message": "DATA-ERROR: The user you tried to add already exists!"})
-                else:
-                    output = 'INVALID DATA: The Data might be empty or the sensorname key is not allowed!'
+                except JutrackValidationError as e:
+                    output = e.message
             else:
                 print('expected MD5: ' + str(calc_md5) + ', received MD5: ' + str(md5))
                 start_response('500 Internal Server Error: There has been an MD5-MISMATCH!',
