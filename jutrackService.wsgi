@@ -5,6 +5,7 @@ import json
 import datetime
 import sys
 from json import JSONDecodeError
+
 # TODO: from datalad.api import Dataset
 
 # ---------------------------------------CONFIGURATION
@@ -27,6 +28,7 @@ valid_data = [
 
 storage_folder = '/mnt/jutrack_data'
 user_folder = storage_folder + '/users'
+
 
 # ----------------------------------------VALIDATION-------------------------------------------------
 
@@ -56,12 +58,12 @@ def is_md5_matching(md5, calc_md5):
 
 
 # compare data content with what is valid
-def is_valid_data(body, action, verbose = 0):
+def is_valid_data(body, action, verbose=0):
     """Perform all possible tests and return a flag"""
-    is_valid_json(body)
+    data = is_valid_json(body, verbose)
 
     if len(data) == 0:
-         raise JutrackValidationError("ERROR: The uploaded content was empty.")
+        raise JutrackValidationError("ERROR: The uploaded content was empty.")
 
     if 'status' in data:
         return data
@@ -79,23 +81,25 @@ def is_valid_data(body, action, verbose = 0):
     return data
 
 
-def is_valid_json(body):
+def is_valid_json(body, verbose):
     try:
         data = json.load(body)
         if verbose:
             print("NOTICE: The uploaded content is valid json.")
     except JSONDecodeError as e:
-       raise JutrackValidationError("ERROR: The uploaded content is not valid json. \tERROR-Message: " + e.msg)
+        raise JutrackValidationError("ERROR: The uploaded content is not valid json. \tERROR-Message: " + e.msg)
+
+    return data
 
 
 def is_valid_study(study_id):
-    if not os.path.isdir(data_folder+"/"+study_id):
+    if not os.path.isdir(data_folder + "/" + study_id):
         raise JutrackValidationError("Invalid study detected: " + str(study_id))
 
 
 def is_valid_user(study_id, username):
-    if not os.path.isfile(user_folder+"/"+study_id+"_"+username + '.json'):
-        raise JutrackValidationError("Invalid user for study "+ study_id +" detected: " + str(username))
+    if not os.path.isfile(user_folder + "/" + study_id + "_" + username + '.json'):
+        raise JutrackValidationError("Invalid user for study " + study_id + " detected: " + str(username))
 
 
 def is_valid_sensor(sensorname):
@@ -163,7 +167,7 @@ def write_file(filename, data, study_dataset):
 
     while os.path.isfile(target_file):
         sys.stderr.write(target_file + " was already existing, therefore " + filename + '_' + str(counter) + '.json'
-            + " will be created.\r\n")
+                         + " will be created.\r\n")
         target_file = filename + '_' + str(counter) + '.json'
         counter += 1
 
@@ -241,8 +245,8 @@ def update_user(data):
     with open(file_name + '.json', 'w') as f:
         json.dump(content, f, ensure_ascii=False, indent=4)
 
-     # TODO: datalad_dataset = Dataset(user_folder)
-     # datalad_dataset.save(file, message="updated user "+user_id+" for study "+study_id)
+    # TODO: datalad_dataset = Dataset(user_folder)
+    # datalad_dataset.save(file, message="updated user "+user_id+" for study "+study_id)
 
     return file_name + '.json'
 
