@@ -2,6 +2,8 @@ import os
 
 import hashlib
 import json
+import argparse
+import glob
 import datetime
 import sys
 from json import JSONDecodeError
@@ -57,10 +59,6 @@ def is_valid_data(body, action, verbose=0):
     # is_valid_study(study_id)
     # is_valid_user(study_id, username)
 
-    if action == "write_data":
-        sensorname = data[0]['sensorname']
-        is_valid_sensor(sensorname)
-
     return data
 
 
@@ -76,10 +74,40 @@ def is_valid_json(body, verbose):
 
 
 def is_valid_study(study_id):
-    if not os.path.isdir(data_folder + "/" + study_id):
+    if not os.path.isdir(studys_folder + "/" + study_id):
         raise JutrackValidationError("Invalid study detected: " + str(study_id))
 
 
 def is_valid_user(study_id, username):
-    if not os.path.isfile(user_folder + "/" + study_id + "_" + username + '.json'):
+    if not os.path.isfile(users_folder + "/" + study_id + "_" + username + '.json'):
         raise JutrackValidationError("Invalid user for study " + study_id + " detected: " + str(username))
+
+
+# -------------------------- FUNCTIONALITY ------------------------------
+
+
+def create_csv_table(study_id):
+    study_folder = storage_folder + '/study_id'
+    first_study_path = get_first_file_in_folder(study_folder)
+    study_dict = get_json_content(first_study_path)
+
+
+# check json in folders recursively
+def get_first_file_in_folder(folder_to_check):
+    file_obj = ""
+    for name in glob.glob(folder_to_check + '/**/*.*', recursive=True):
+        file_obj = name
+    return file_obj
+
+
+def get_json_content(file_path):
+    content = None
+
+    with open(file_path) as json_file:
+        try:
+            content = json.load(json_file)
+        except JSONDecodeError as e:
+            print("ERROR: The file " + file_path + " is not a valid json file. \tERROR-Message: " + e.msg)
+        json_file.close()
+
+    return content

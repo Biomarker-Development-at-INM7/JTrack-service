@@ -4,7 +4,6 @@ import hashlib
 import json
 import datetime
 import sys
-from json import JSONDecodeError
 
 # TODO: from datalad.api import Dataset
 
@@ -86,7 +85,7 @@ def is_valid_json(body, verbose):
         data = json.load(body)
         if verbose:
             print("NOTICE: The uploaded content is valid json.")
-    except JSONDecodeError as e:
+    except Error as e:
         raise JutrackValidationError("ERROR: The uploaded content is not valid json. \tERROR-Message: " + e.msg)
 
     return data
