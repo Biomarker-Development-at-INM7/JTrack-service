@@ -22,6 +22,7 @@ def prepare_csv(study_id):
 
     for subdir, dirs, files in os.walk(study_folder):
         for users in dirs:
+            print(users)
             user_data = examine_user(study_folder, study_id, users)
             csv_data = csv_data + user_data
 
@@ -59,18 +60,14 @@ def examine_device(user_folder, users, devices, user_joined, days_in_study, user
         for sensors in dirs3:
             sensor_folder = device_folder + '/' + sensors
             sensor_files = get_files_in_folder(sensor_folder)
-            print(sensor_folder + " FILES:")
-            print('[%s]' % ', '.join(map(str, sensor_files)))
             number_of_files = len(sensor_files)
 
             last_file_path = sensor_files[number_of_files - 1]
             last_file_data = get_json_content(last_file_path)
             last_timestamp = last_file_data[len(last_file_data)-1]["timestamp"]/1000.0
-            print(last_timestamp)
 
             device_data[sensors + " n_batches"] = number_of_files
             last_date = datetime.fromtimestamp(last_timestamp)
-            print(last_date)
             device_data[sensors + " last_time_received"] = str(last_date.year) + "-" + str(last_date.month) + "-" + \
                 str(last_date.day) + " " + str(last_date.hour) + ":" + str(
                 last_date.minute)
