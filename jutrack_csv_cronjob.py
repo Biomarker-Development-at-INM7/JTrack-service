@@ -114,7 +114,7 @@ def invoke_csv_for_all_studys():
 # check json in folders recursively
 def get_files_in_folder(folder_to_check):
     all_files = []
-    for name in sorted(glob.glob(folder_to_check + '/*/*.*', recursive=True)):
+    for name in sorted(glob.glob(folder_to_check + '/*.*', recursive=True)):
         all_files.append(name)
     return all_files
 
