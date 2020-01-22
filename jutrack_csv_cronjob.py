@@ -122,13 +122,12 @@ def get_files_in_folder(folder_to_check):
 
 
 def get_json_content(file_path):
-    content = None
-
     with open(file_path) as json_file:
         try:
             content = json.load(json_file)
         except:
             print("ERROR: The file " + file_path + " is not a valid json file.")
+            content = {}
         json_file.close()
 
     return content
