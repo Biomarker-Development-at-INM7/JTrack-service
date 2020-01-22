@@ -140,5 +140,5 @@ def invoke_csv_for_all_studys():
 
 if __name__ == "__main__":
     invoke_csv_for_all_studys()
-    with open("/var/log/jutrack_csv.log", "a") as log_file:
-        log_file.write("Cron successful on: " + str(datetime.now()))
+    with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+        log_file.write("Cron successful on: " + str(datetime.now()) + "\n")
