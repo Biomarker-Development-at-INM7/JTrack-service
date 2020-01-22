@@ -1,18 +1,15 @@
 import os
-
 import hashlib
 import json
-import argparse
-import glob
-import datetime
-import sys
 from json import JSONDecodeError
 
 # -------------------- CONFIGRATION -----------------------
 storage_folder = '/mnt/jutrack_data'
 studys_folder = storage_folder
 users_folder = storage_folder + '/users'
-devices_folder = ""
+
+sensor_names = ['accelerometer', 'activity', 'application_usage', 'barometer', 'gravity_sensor', 'gyroscope',
+                'location', 'magnetic_sensor', 'rotation_vector', 'linear_acceleration']
 
 
 # -------------------- VALIDATION -------------------------
@@ -43,15 +40,12 @@ def is_md5_matching(md5, calc_md5):
 
 
 # compare data content with what is valid
-def is_valid_data(body, action, verbose=0):
+def is_valid_data(body, verbose=0):
     """Perform all possible tests and return a flag"""
     data = is_valid_json(body, verbose)
 
     if len(data) == 0:
         raise JutrackValidationError("ERROR: The uploaded content was empty.")
-
-    if 'status' in data:
-        return data
 
     # study_id = data[0]['studyId']
     # user_id = data[0]['username']
@@ -86,28 +80,71 @@ def is_valid_user(study_id, username):
 # -------------------------- FUNCTIONALITY ------------------------------
 
 
-def create_csv_table(study_id):
-    study_folder = storage_folder + '/study_id'
-    first_study_path = get_first_file_in_folder(study_folder)
-    study_dict = get_json_content(first_study_path)
-
-
-# check json in folders recursively
-def get_first_file_in_folder(folder_to_check):
-    file_obj = ""
-    for name in glob.glob(folder_to_check + '/**/*.*', recursive=True):
-        file_obj = name
-    return file_obj
-
-
-def get_json_content(file_path):
-    content = None
-
-    with open(file_path) as json_file:
-        try:
-            content = json.load(json_file)
-        except JSONDecodeError as e:
-            print("ERROR: The file " + file_path + " is not a valid json file. \tERROR-Message: " + e.msg)
-        json_file.close()
-
+def get_study_csv(json_data):
+    study_id = json_data["study"]
+    csv_path = storage_folder + '/jutrack_dashboard_' + study_id + '.csv'
+    file = open(csv_path, "r")
+    content = file.read()
+    file.close()
     return content
+
+
+# ----------------------------------------APPLICATION------------------------------------------------
+
+
+# This method is called by the main endpoint
+def application(environ, start_response):
+    # We only accept POST-requests
+    if environ['REQUEST_METHOD'] == 'POST':
+        if 'HTTP_ACTION' in environ:
+            action = environ['HTTP_ACTION']
+
+            # read request body
+            try:
+                request_body = environ['wsgi.input'].read()
+            except ValueError:
+                start_response('500 Internal Server Error: ValueError occured during JSON parsing!',
+                               [('Content-type', 'application/json')])
+                return json.dumps({"message": "The wsgi service was not able to parse the json content."})
+
+            # read passed MD5 value
+            if 'HTTP_MD5' in environ:
+                md5 = environ['HTTP_MD5']
+            else:
+                md5 = environ['HTTP_CONTENT-MD5']
+
+            calc_md5 = hashlib.md5(request_body).hexdigest()
+
+            # Check MD5 and content. If both is good perform actions
+            if is_md5_matching(md5, calc_md5):
+                try:
+                    data = is_valid_data(request_body, 0)
+                    output = "NONE"
+                    if action == "get_study":
+                        output = get_study_csv(data)
+                    if output == "NONE":
+                        start_response('404 File Not Found', [('Content-type', 'application/json')])
+                        return json.dumps({"message": "DATA-ERROR: The content for the selected study was not found!"})
+                except JutrackValidationError as e:
+                    output = e.message
+            else:
+                print('expected MD5: ' + str(calc_md5) + ', received MD5: ' + str(md5))
+                start_response('500 Internal Server Error: There has been an MD5-MISMATCH!',
+                               [('Content-type', 'application/json')])
+                return json.dumps({"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data "
+                                              "+and the received data, fetching aborted!"})
+        else:
+            start_response('500 Internal Server Error: There has been a KEY MISSING!',
+                           [('Content-type', 'application/json')])
+            return json.dumps({"message": "MISSING-KEY: There was no action-attribute defined, "
+                                          "+fetching aborted!"})
+    else:
+        start_response('500 Internal Server Error: Wrong request type!',
+                       [('Content-type', 'application/json')])
+        return json.dumps({"message": "Expected POST-request!"})
+
+    # aaaaaand respond to client
+    start_response('200 OK', [('Content-type', 'application/json')])  # ,('Content-Length', str(len(output)))])
+    output_dict = {"content": output}
+    print(output)
+    return json.dumps(output_dict)
