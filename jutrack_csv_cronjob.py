@@ -21,7 +21,6 @@ def prepare_csv(study_id):
     csv_data = []
 
     for users in os.listdir(study_folder):
-        print(users)
         user_data = examine_user(study_folder, study_id, users)
         csv_data = csv_data + user_data
 
@@ -34,6 +33,7 @@ def examine_user(study_folder, study_id, users):
     user_status = user_file["status"]
     user_joined = user_file["time_joined"]/1000.0
     user_left = user_file["time_left"]/1000.0
+    print(user_left)
     if user_left == "":
         time_in_study = time.time() - user_joined
     else:
