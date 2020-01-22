@@ -22,15 +22,15 @@ def prepare_csv(study_id):
 
     for subdir, dirs, files in os.walk(study_folder):
         for users in dirs:
-            user_data = examine_user(study_folder, users)
+            user_data = examine_user(study_folder, study_id, users)
             csv_data = csv_data + user_data
 
     write_csv(study_id, csv_data)
 
 
-def examine_user(study_folder, users):
+def examine_user(study_folder, study_id, users):
     user_data = []
-    user_file = get_json_content(users_folder + "/" + users + ".json")
+    user_file = get_json_content(users_folder + "/" + study_id + "_" + users + ".json")
     user_status = user_file[0]["status"]
     user_joined = user_file[0]["time_joined"]
     user_left = user_file[0]["time_left"]
