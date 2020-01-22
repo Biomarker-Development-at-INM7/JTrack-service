@@ -30,7 +30,7 @@ def prepare_csv(study_id):
 
 def examine_user(study_folder, users):
     user_data = []
-    user_file = get_json_content(users_folder + "/" + users)
+    user_file = get_json_content(users_folder + "/" + users + ".json")
     user_status = user_file[0]["status"]
     user_joined = user_file[0]["time_joined"]
     user_left = user_file[0]["time_left"]
