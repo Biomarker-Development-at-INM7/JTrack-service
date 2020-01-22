@@ -62,8 +62,9 @@ def examine_device(user_folder, users, devices, user_joined, days_in_study, user
             number_of_files = len(sensor_files)
 
             last_file_path = sensor_files[number_of_files - 1]
-            last_file_data = last_file_path.split('_')
-            last_timestamp = last_file_data[len(last_file_data)-1]
+            last_file_data = get_json_content(last_file_path)
+            last_timestamp = last_file_data[len(last_file_data)-1]["timestamp"]
+            print(last_timestamp)
 
             device_data[sensors + " n_batches"] = number_of_files
             last_date = datetime.fromtimestamp(last_timestamp)
