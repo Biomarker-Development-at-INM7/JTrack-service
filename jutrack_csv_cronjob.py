@@ -33,7 +33,6 @@ def examine_user(study_folder, study_id, users):
     user_status = user_file["status"]
     user_joined = user_file["time_joined"]/1000.0
     user_left = user_file["time_left"]/1000.0
-    print(user_left)
     if user_left == 0.0:
         time_in_study = time.time() - user_joined
     else:
@@ -52,7 +51,7 @@ def examine_user(study_folder, study_id, users):
 def examine_device(user_folder, users, devices, user_joined, days_in_study, user_status):
     device_folder = user_folder + '/' + devices
     device_data = {"subject_name": users, "device_id": devices, "date_registered": datetime.fromtimestamp(user_joined),
-                   "time_in_study": str(days_in_study) + "days", "status_code": user_status}
+                   "time_in_study": str(days_in_study) + " days", "status_code": user_status}
 
     for sensors in os.listdir(device_folder):
         sensor_folder = device_folder + '/' + sensors
@@ -140,4 +139,6 @@ def invoke_csv_for_all_studys():
 
 
 if __name__ == "__main__":
-    invoke_csv_for_all_studys()  # */30 * * * * /usr/bin/python /var/www/jutrack.inm7.de/service/jutrack_csv_cronjob.py
+    invoke_csv_for_all_studys()
+    with open("/var/log/jutrack_csv.log", "a") as log_file:
+        log_file.write("Cron successful on: " + str(datetime.now()))
