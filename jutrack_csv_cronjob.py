@@ -59,7 +59,8 @@ def examine_device(user_folder, users, devices, user_joined, days_in_study, user
         for sensors in dirs3:
             sensor_folder = device_folder + '/' + sensors
             sensor_files = get_files_in_folder(sensor_folder)
-            print(sensor_folder + " FILES:" + sensor_files)
+            print(sensor_folder + " FILES:")
+            print('[%s]' % ', '.join(map(str, sensor_files)))
             number_of_files = len(sensor_files)
 
             last_file_path = sensor_files[number_of_files - 1]
