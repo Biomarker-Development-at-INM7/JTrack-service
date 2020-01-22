@@ -32,14 +32,14 @@ def examine_user(study_folder, study_id, users):
     user_data = []
     user_file = get_json_content(users_folder + "/" + study_id + "_" + users + ".json")
     user_status = user_file["status"]
-    user_joined = user_file["time_joined"]
-    user_left = user_file["time_left"]
+    user_joined = user_file["time_joined"]/1000.0
+    user_left = user_file["time_left"]/1000.0
     if user_left == "":
         time_in_study = time.time() - user_joined
     else:
         time_in_study = user_left - user_joined
 
-    days_in_study = int(time_in_study / 1000.0 / 86400.0)
+    days_in_study = int(time_in_study/86400.0)
 
     user_folder = study_folder + '/' + users
     for subdir2, dirs2, files2 in os.walk(user_folder):
