@@ -21,8 +21,9 @@ def prepare_csv(study_id):
     csv_data = []
 
     for users in os.listdir(study_folder):
-        user_data = examine_user(study_folder, study_id, users)
-        csv_data = csv_data + user_data
+        if not users.startswith('.'):
+            user_data = examine_user(study_folder, study_id, users)
+            csv_data = csv_data + user_data
 
     write_csv(study_id, csv_data)
 
@@ -134,8 +135,7 @@ def get_json_content(file_path):
 
 def invoke_csv_for_all_studys():
     for studys in os.listdir(storage_folder):
-        if studys != "users" and studys != "lost+found" and os.path.isdir(storage_folder + '/' + studys) \
-                and not studys.startswith('.'):
+        if studys != "users" and studys != "lost+found" and os.path.isdir(storage_folder + '/' + studys):
             prepare_csv(studys)
 
 
