@@ -91,14 +91,26 @@ def write_csv(study_id, csv_data):
         writer.writerow(data_keys)
         for row_number in range(len(csv_data)):
             csv_row = csv_data[row_number]
-            writer.writerow([csv_row[data_keys[0]], csv_row[data_keys[1]], csv_row[data_keys[2]], csv_row[data_keys[3]],
-                             csv_row[data_keys[4]], csv_row[data_keys[5]], csv_row[data_keys[6]], csv_row[data_keys[7]],
-                             csv_row[data_keys[8]], csv_row[data_keys[9]], csv_row[data_keys[10]],
-                             csv_row[data_keys[11]], csv_row[data_keys[12]], csv_row[data_keys[13]],
-                             csv_row[data_keys[14]], csv_row[data_keys[15]], csv_row[data_keys[16]],
-                             csv_row[data_keys[17]], csv_row[data_keys[18]], csv_row[data_keys[19]],
-                             csv_row[data_keys[20]], csv_row[data_keys[21]], csv_row[data_keys[22]],
-                             csv_row[data_keys[23]], csv_row[data_keys[24]]])
+            writer.writerow([check_key(data_keys[0], csv_row), check_key(data_keys[1], csv_row),
+                             check_key(data_keys[2], csv_row), check_key(data_keys[3], csv_row),
+                             check_key(data_keys[4], csv_row), check_key(data_keys[5], csv_row),
+                             check_key(data_keys[6], csv_row), check_key(data_keys[7], csv_row),
+                             check_key(data_keys[8], csv_row), check_key(data_keys[9], csv_row),
+                             check_key(data_keys[10], csv_row), check_key(data_keys[11], csv_row),
+                             check_key(data_keys[12], csv_row), check_key(data_keys[13], csv_row),
+                             check_key(data_keys[14], csv_row), check_key(data_keys[15], csv_row),
+                             check_key(data_keys[16], csv_row), check_key(data_keys[17], csv_row),
+                             check_key(data_keys[18], csv_row), check_key(data_keys[19], csv_row),
+                             check_key(data_keys[20], csv_row), check_key(data_keys[21], csv_row),
+                             check_key(data_keys[22], csv_row), check_key(data_keys[23], csv_row),
+                             check_key(data_keys[24], csv_row)])
+
+
+def check_key(key, data):
+    if key in data.keys():
+        return data[key]
+    else:
+        return "none"
 
 
 # check json in folders recursively
