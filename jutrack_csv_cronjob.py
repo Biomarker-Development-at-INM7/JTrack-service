@@ -20,11 +20,10 @@ def prepare_csv(study_id):
 
     csv_data = []
 
-    for subdir, dirs, files in os.walk(study_folder):
-        for users in dirs:
-            print(users)
-            user_data = examine_user(study_folder, study_id, users)
-            csv_data = csv_data + user_data
+    for users in os.listdir(study_folder):
+        print(users)
+        user_data = examine_user(study_folder, study_id, users)
+        csv_data = csv_data + user_data
 
     write_csv(study_id, csv_data)
 
@@ -43,10 +42,9 @@ def examine_user(study_folder, study_id, users):
     days_in_study = int(time_in_study/86400.0)
 
     user_folder = study_folder + '/' + users
-    for subdir2, dirs2, files2 in os.walk(user_folder):
-        for devices in dirs2:
-            row_data = examine_device(user_folder, users, devices, user_joined, days_in_study, user_status)
-            user_data.append(row_data)
+    for devices in os.listdir(user_folder):
+        row_data = examine_device(user_folder, users, devices, user_joined, days_in_study, user_status)
+        user_data.append(row_data)
 
     return user_data
 
@@ -56,21 +54,20 @@ def examine_device(user_folder, users, devices, user_joined, days_in_study, user
     device_data = {"subject_name": users, "device_id": devices, "date_registered": datetime.fromtimestamp(user_joined),
                    "time_in_study": str(days_in_study) + "days", "status_code": user_status}
 
-    for subdir3, dirs3, files3 in os.walk(device_folder):
-        for sensors in dirs3:
-            sensor_folder = device_folder + '/' + sensors
-            sensor_files = get_files_in_folder(sensor_folder)
-            number_of_files = len(sensor_files)
+    for sensors in os.listdir(device_folder):
+        sensor_folder = device_folder + '/' + sensors
+        sensor_files = get_files_in_folder(sensor_folder)
+        number_of_files = len(sensor_files)
 
-            last_file_path = sensor_files[number_of_files - 1]
-            last_file_data = get_json_content(last_file_path)
-            last_timestamp = last_file_data[len(last_file_data)-1]["timestamp"]/1000.0
+        last_file_path = sensor_files[number_of_files - 1]
+        last_file_data = get_json_content(last_file_path)
+        last_timestamp = last_file_data[len(last_file_data)-1]["timestamp"]/1000.0
 
-            device_data[sensors + " n_batches"] = number_of_files
-            last_date = datetime.fromtimestamp(last_timestamp)
-            device_data[sensors + " last_time_received"] = str(last_date.year) + "-" + str(last_date.month) + "-" + \
-                str(last_date.day) + " " + str(last_date.hour) + ":" + str(
-                last_date.minute)
+        device_data[sensors + " n_batches"] = number_of_files
+        last_date = datetime.fromtimestamp(last_timestamp)
+        device_data[sensors + " last_time_received"] = str(last_date.year) + "-" + str(last_date.month) + "-" + \
+            str(last_date.day) + " " + str(last_date.hour) + ":" + str(
+            last_date.minute)
 
     return device_data
 
@@ -105,9 +102,8 @@ def write_csv(study_id, csv_data):
 
 
 def invoke_csv_for_all_studys():
-    for subdir, dirs, files in os.walk(storage_folder):
-        for studys in dirs:
-            prepare_csv(studys)
+    for studys in os.listdir(storage_folder):
+        prepare_csv(studys)
 
 
 # check json in folders recursively
