@@ -31,9 +31,9 @@ def prepare_csv(study_id):
 def examine_user(study_folder, study_id, users):
     user_data = []
     user_file = get_json_content(users_folder + "/" + study_id + "_" + users + ".json")
-    user_status = user_file[0]["status"]
-    user_joined = user_file[0]["time_joined"]
-    user_left = user_file[0]["time_left"]
+    user_status = user_file["status"]
+    user_joined = user_file["time_joined"]
+    user_left = user_file["time_left"]
     if user_left == "":
         time_in_study = time.time() - user_joined
     else:
