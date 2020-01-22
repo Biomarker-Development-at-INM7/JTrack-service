@@ -34,7 +34,7 @@ def examine_user(study_folder, study_id, users):
     user_joined = user_file["time_joined"]/1000.0
     user_left = user_file["time_left"]/1000.0
     print(user_left)
-    if user_left == "":
+    if user_left == 0.0:
         time_in_study = time.time() - user_joined
     else:
         time_in_study = user_left - user_joined
