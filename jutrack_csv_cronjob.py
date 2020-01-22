@@ -134,7 +134,8 @@ def get_json_content(file_path):
 
 def invoke_csv_for_all_studys():
     for studys in os.listdir(storage_folder):
-        if studys != "users" and studys != "lost+found" and os.path.isdir(storage_folder + '/' + studys):
+        if studys != "users" and studys != "lost+found" and os.path.isdir(storage_folder + '/' + studys) \
+                and not studys.startswith('.'):
             prepare_csv(studys)
 
 

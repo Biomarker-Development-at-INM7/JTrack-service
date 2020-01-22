@@ -89,6 +89,14 @@ def get_study_csv(json_data):
     return content
 
 
+def list_studys():
+    study_list = []
+    for studys in os.listdir(storage_folder):
+        if studys != "users" and studys != "lost+found" and os.path.isdir(storage_folder + '/' + studys):
+            study_list.append(studys)
+
+    return study_list
+
 # ----------------------------------------APPLICATION------------------------------------------------
 
 
@@ -122,6 +130,8 @@ def application(environ, start_response):
                     output = "NONE"
                     if action == "get_study":
                         output = get_study_csv(data)
+                    elif action == "get_study_list":
+                        output = list_studys()
                     if output == "NONE":
                         start_response('404 File Not Found', [('Content-type', 'application/json')])
                         return json.dumps({"message": "DATA-ERROR: The content for the selected study was not found!"})
