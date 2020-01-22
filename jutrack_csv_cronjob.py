@@ -101,11 +101,6 @@ def write_csv(study_id, csv_data):
                              csv_row[data_keys[23]], csv_row[data_keys[24]]])
 
 
-def invoke_csv_for_all_studys():
-    for studys in os.listdir(storage_folder):
-        prepare_csv(studys)
-
-
 # check json in folders recursively
 def get_files_in_folder(folder_to_check):
     all_files = []
@@ -125,6 +120,12 @@ def get_json_content(file_path):
         json_file.close()
 
     return content
+
+
+def invoke_csv_for_all_studys():
+    for studys in os.listdir(storage_folder):
+        if studys != "users":
+            prepare_csv(studys)
 
 
 if __name__ == "__main__":
