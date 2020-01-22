@@ -61,13 +61,13 @@ def examine_device(user_folder, users, devices, user_joined, days_in_study, user
 
         last_file_path = sensor_files[number_of_files - 1]
         last_file_data = get_json_content(last_file_path)
-        last_timestamp = last_file_data[len(last_file_data)-1]["timestamp"]/1000.0
+        if len(last_file_data) > 0:
+            last_timestamp = last_file_data[len(last_file_data)-1]["timestamp"]/1000.0
 
-        device_data[sensors + " n_batches"] = number_of_files
-        last_date = datetime.fromtimestamp(last_timestamp)
-        device_data[sensors + " last_time_received"] = str(last_date.year) + "-" + str(last_date.month) + "-" + \
-            str(last_date.day) + " " + str(last_date.hour) + ":" + str(
-            last_date.minute)
+            device_data[sensors + " n_batches"] = number_of_files
+            last_date = datetime.fromtimestamp(last_timestamp)
+            device_data[sensors + " last_time_received"] = str(last_date.year) + "-" + str(last_date.month) + "-" + \
+                str(last_date.day) + " " + str(last_date.hour) + ":" + str(last_date.minute)
 
     return device_data
 
