@@ -7,7 +7,7 @@ import json
 
 # -------------------- CONFIGRATION -----------------------
 storage_folder = '/mnt/jutrack_data'
-studys_folder = storage_folder
+studys_folder = storage_folder + '/studys'
 users_folder = storage_folder + '/users'
 devices_folder = ""
 
@@ -16,7 +16,7 @@ sensor_names = ['accelerometer', 'activity', 'application_usage', 'barometer', '
 
 
 def prepare_csv(study_id):
-    study_folder = storage_folder + '/' + study_id
+    study_folder = studys_folder + '/' + study_id
 
     csv_data = []
 
@@ -134,8 +134,8 @@ def get_json_content(file_path):
 
 
 def invoke_csv_for_all_studys():
-    for studys in os.listdir(storage_folder):
-        if studys != "users" and studys != "lost+found" and os.path.isdir(storage_folder + '/' + studys):
+    for studys in os.listdir(studys_folder):
+        if os.path.isdir(studys_folder + '/' + studys):
             prepare_csv(studys)
 
 
