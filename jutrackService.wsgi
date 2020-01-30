@@ -5,7 +5,7 @@ import json
 import datetime
 import sys
 
-# TODO: from datalad.api import Dataset
+from datalad.api import Dataset
 
 # ---------------------------------------CONFIGURATION
 
@@ -26,6 +26,7 @@ valid_data = [
 ]
 
 storage_folder = '/mnt/jutrack_data'
+studys_folder = storage_folder + '/studys'
 user_folder = storage_folder + '/users'
 
 
@@ -92,7 +93,7 @@ def is_valid_json(body, verbose):
 
 
 def is_valid_study(study_id):
-    if not os.path.isdir(data_folder + "/" + study_id):
+    if not os.path.isdir(studys_folder + "/" + study_id):
         raise JutrackValidationError("Invalid study detected: " + str(study_id))
 
 
@@ -151,7 +152,7 @@ def get_filename(data):
     data_name = data[0]['sensorname']
 
     # check for folder and create if a (sub-)folder does not exist
-    data_folder = storage_folder + '/' + study_id + '/' + user_id + '/' + device_id + '/' + data_name
+    data_folder = studys_folder + '/' + study_id + '/' + user_id + '/' + device_id + '/' + data_name
     if not os.path.isdir(data_folder):
         os.makedirs(data_folder)
 
@@ -173,9 +174,9 @@ def write_file(filename, data, study_dataset):
     with open(target_file, 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-    # TODO: study_dataset.save(file, message="new file "+target_file+" for study")
-    # ds.publish(file, to="inm7")
-    # ds.drop(file)
+    study_dataset.save(file, message="new file "+target_file+" for study")
+    # study_dataset.publish(file, to="inm7")
+    # study_dataset.drop(file)
 
     return target_file
 
@@ -185,7 +186,7 @@ def write_file(filename, data, study_dataset):
 
 def exec_file(data):
     file_name, study_id = get_filename(data)
-    # TODO: datalad_dataset = Dataset(storage_folder+ "/"+study_id)
+    datalad_dataset = Dataset(studys_folder + "/"+study_id)
     return write_file(file_name, data, datalad_dataset)
 
 
@@ -208,8 +209,8 @@ def add_user(data):
         with open(target_file, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
-        # TODO: datalad_dataset = Dataset(user_folder)
-        # datalad_dataset.save(file, message="new user "+user_id+" for study "+study_id)
+        datalad_dataset = Dataset(user_folder)
+        datalad_dataset.save(file, message="new user "+user_id+" for study "+study_id)
 
         return target_file
 
@@ -244,8 +245,8 @@ def update_user(data):
     with open(file_name + '.json', 'w') as f:
         json.dump(content, f, ensure_ascii=False, indent=4)
 
-    # TODO: datalad_dataset = Dataset(user_folder)
-    # datalad_dataset.save(file, message="updated user "+user_id+" for study "+study_id)
+    datalad_dataset = Dataset(user_folder)
+    datalad_dataset.save(file, message="updated user "+user_id+" for study "+study_id)
 
     return file_name + '.json'
 

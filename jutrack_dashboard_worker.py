@@ -5,7 +5,7 @@ from json import JSONDecodeError
 
 # -------------------- CONFIGRATION -----------------------
 storage_folder = '/mnt/jutrack_data'
-studys_folder = storage_folder
+studys_folder = storage_folder + "/studys"
 users_folder = storage_folder + '/users'
 
 sensor_names = ['accelerometer', 'activity', 'application_usage', 'barometer', 'gravity_sensor', 'gyroscope',
@@ -96,6 +96,23 @@ def list_studys():
             study_list.append(studys)
 
     return study_list
+
+
+from datalad.api import Dataset
+
+
+def create_study(json_data):
+    study_id = json_data["name"]
+    folder_name = studys_folder + "/" + study_id
+
+    if not os.path.isdir(folder_name):
+        os.makedirs(folder_name)
+        datalad_dataset = Dataset(folder_name)
+        file_name = studys_folder + "/" + study_id + "/" + study_id + ".json"
+        with open(file_name, 'w') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=4)
+        datalad_dataset.save(file_name, message="new file " + file_name + " for study")
+
 
 # ----------------------------------------APPLICATION------------------------------------------------
 
