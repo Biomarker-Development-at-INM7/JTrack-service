@@ -83,7 +83,7 @@ def is_valid_data(body, action, verbose=0):
 
 def is_valid_json(body, verbose):
     try:
-        data = json.load(body)
+        data = json.loads(body)
         if verbose:
             print("NOTICE: The uploaded content is valid json.")
     except Error as e:
@@ -210,7 +210,7 @@ def add_user(data):
             json.dump(data, f, ensure_ascii=False, indent=4)
 
         datalad_dataset = Dataset(user_folder)
-        datalad_dataset.save(file, message="new user "+user_id+" for study "+study_id)
+        datalad_dataset.save(target_file, message="new user "+user_id+" for study "+study_id)
 
         return target_file
 
@@ -276,12 +276,11 @@ def application(environ, start_response):
                 md5 = environ['HTTP_CONTENT-MD5']
 
             calc_md5 = hashlib.md5(request_body).hexdigest()
-            data = json.loads(request_body)  # form content as decoded JSON
 
             # Check MD5 and content. If both is good perform actions
             if is_md5_matching(md5, calc_md5):
                 try:
-                    data = is_valid_data(body, action, 0)
+                    data = is_valid_data(request_body, action, 0)
                     output = perform_action(action, data)
                     if output == "user exists":
                         start_response('422 Existing Data Error', [('Content-type', 'application/json')])
