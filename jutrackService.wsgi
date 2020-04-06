@@ -302,9 +302,9 @@ def application(environ, start_response):
 
     # aaaaaand respond to client
     if 'status' in data:
-        output_dict = data
+        output = data
     else:
-        output_dict = data[0]
+        output = data[0]
     
     start_response(status, [('Content-type', 'application/json')])
     output_dump = json.dumps(output)
