@@ -301,10 +301,11 @@ def application(environ, start_response):
         output = {"message": "Expected POST-request!"}
 
     # aaaaaand respond to client
-    if 'status' in data:
-        output = data
-    else:
-        output = data[0]
+    if isinstance(output, str):
+        if 'status' in data:
+            output = data
+        else:
+            output = data[0]
     
     start_response(status, [('Content-type', 'application/json')])
     output_dump = json.dumps(output)
