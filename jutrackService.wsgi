@@ -256,6 +256,8 @@ def update_user(data):
 
 # This method is called by the main endpoint
 def application(environ, start_response):
+    output = {}
+    status = "200 OK"
     # We only accept POST-requests
     if environ['REQUEST_METHOD'] == 'POST':
         if 'HTTP_ACTION' in environ:
@@ -264,50 +266,46 @@ def application(environ, start_response):
             # read request body
             try:
                 request_body = environ['wsgi.input'].read()
+                
+                # read passed MD5 value
+                if 'HTTP_MD5' in environ:
+                    md5 = environ['HTTP_MD5']
+                else:
+                    md5 = environ['HTTP_CONTENT-MD5']
+
+                calc_md5 = hashlib.md5(request_body).hexdigest()
+
+                # Check MD5 and content. If both is good perform actions
+                if is_md5_matching(md5, calc_md5):
+                    try:
+                        data = is_valid_data(request_body, action, 0)
+                        output = perform_action(action, data)
+                        if output == "user exists":
+                            status = '422 Existing Data Error'
+                            output = {"message": "DATA-ERROR: The user you tried to add already exists!"}
+                    except JutrackValidationError as e:
+                        output = e.message
+                else:
+                    print('expected MD5: ' + str(calc_md5) + ', received MD5: ' + str(md5))
+                    status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
+                    output = {"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
             except ValueError:
-                start_response('500 Internal Server Error: ValueError occured during JSON parsing!',
-                               [('Content-type', 'application/json')])
-                return json.dumps({"message": "The wsgi service was not able to parse the json content."})
+                status = '500 Internal Server Error: ValueError occured during JSON parsing!'
+                output = {"message": "The wsgi service was not able to parse the json content."}
 
-            # read passed MD5 value
-            if 'HTTP_MD5' in environ:
-                md5 = environ['HTTP_MD5']
-            else:
-                md5 = environ['HTTP_CONTENT-MD5']
-
-            calc_md5 = hashlib.md5(request_body).hexdigest()
-
-            # Check MD5 and content. If both is good perform actions
-            if is_md5_matching(md5, calc_md5):
-                try:
-                    data = is_valid_data(request_body, action, 0)
-                    output = perform_action(action, data)
-                    if output == "user exists":
-                        start_response('422 Existing Data Error', [('Content-type', 'application/json')])
-                        return json.dumps({"message": "DATA-ERROR: The user you tried to add already exists!"})
-                except JutrackValidationError as e:
-                    output = e.message
-            else:
-                print('expected MD5: ' + str(calc_md5) + ', received MD5: ' + str(md5))
-                start_response('500 Internal Server Error: There has been an MD5-MISMATCH!',
-                               [('Content-type', 'application/json')])
-                return json.dumps({"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data "
-                                              "+and the received data, upload aborted!"})
         else:
-            start_response('500 Internal Server Error: There has been a KEY MISSING!',
-                           [('Content-type', 'application/json')])
-            return json.dumps({"message": "MISSING-KEY: There was no action-attribute defined, "
-                                          "+upload aborted!"})
+            status = '500 Internal Server Error: There has been a KEY MISSING!'
+            output = {"message": "MISSING-KEY: There was no action-attribute defined, upload aborted!"}
     else:
-        start_response('500 Internal Server Error: Wrong request type!',
-                       [('Content-type', 'application/json')])
-        return json.dumps({"message": "Expected POST-request!"})
+        status = '500 Internal Server Error: Wrong request type!'
+        output = {"message": "Expected POST-request!"}
 
     # aaaaaand respond to client
-    start_response('200 OK', [('Content-type', 'application/json')])  # ,('Content-Length', str(len(output)))])
     if 'status' in data:
         output_dict = data
     else:
         output_dict = data[0]
-    print(output)
-    return json.dumps(output_dict)
+    
+    start_response(status, [('Content-type', 'application/json')])
+    output_dump = json.dumps(output)
+    return [output_dump.encode('utf-8')]
