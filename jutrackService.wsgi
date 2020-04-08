@@ -260,7 +260,10 @@ def application(environ, start_response):
                 else:
                     md5 = environ['HTTP_CONTENT-MD5']
 
-                calc_md5 = hashlib.md5(request_body).hexdigest()
+                # calc_md5 = hashlib.md5(request_body).hexdigest()
+                calc_md5 = hashlib.md5()
+                calc_md5.update(request_body)
+                calc_md5.hexdigest()
 
                 # Check MD5 and content. If both is good perform actions
                 if is_md5_matching(md5, calc_md5):
