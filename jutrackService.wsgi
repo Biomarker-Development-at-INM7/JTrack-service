@@ -5,8 +5,6 @@ import json
 import datetime
 import sys
 
-from datalad.api import Dataset
-
 # ---------------------------------------CONFIGURATION
 
 # server version
@@ -161,7 +159,7 @@ def get_filename(data):
 
 
 # if a file already exists we do not want to loose data, so we store under a name with a counter as suffix
-def write_file(filename, data, study_dataset):
+def write_file(filename, data):
     target_file = filename + '.json'
     counter = 1
 
@@ -174,10 +172,6 @@ def write_file(filename, data, study_dataset):
     with open(target_file, 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-    study_dataset.save(file, message="new file "+target_file+" for study")
-    # study_dataset.publish(file, to="inm7")
-    # study_dataset.drop(file)
-
     return target_file
 
 
@@ -186,8 +180,7 @@ def write_file(filename, data, study_dataset):
 
 def exec_file(data):
     file_name, study_id = get_filename(data)
-    datalad_dataset = Dataset(studys_folder + "/"+study_id)
-    return write_file(file_name, data, datalad_dataset)
+    return write_file(file_name, data)
 
 
 # stores user data (no personal data) in a new file
@@ -208,9 +201,6 @@ def add_user(data):
     else:
         with open(target_file, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-
-        datalad_dataset = Dataset(user_folder)
-        datalad_dataset.save(target_file, message="new user "+user_id+" for study "+study_id)
 
         return target_file
 
@@ -244,9 +234,6 @@ def update_user(data):
         # Write to file and return the file name for logging
     with open(file_name + '.json', 'w') as f:
         json.dump(content, f, ensure_ascii=False, indent=4)
-
-    datalad_dataset = Dataset(user_folder)
-    datalad_dataset.save(file, message="updated user "+user_id+" for study "+study_id)
 
     return file_name + '.json'
 
