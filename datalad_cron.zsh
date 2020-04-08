@@ -1,4 +1,5 @@
 #!/bin/zsh
+# TODO: add publish(file, to="inm7") and drop(file) later on
 
 # check studys for datalad status and save if necessary
 cd /mnt/jutrack_data/studys
