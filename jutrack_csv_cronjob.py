@@ -21,7 +21,7 @@ def prepare_csv(study_id):
     csv_data = []
 
     for users in os.listdir(study_folder):
-        if not users.startswith('.'):
+        if not users.startswith('.') and not users.endswith('.json'):
             user_data = examine_user(study_folder, study_id, users)
             csv_data = csv_data + user_data
 

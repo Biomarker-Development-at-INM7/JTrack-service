@@ -4,7 +4,6 @@ import hashlib
 import json
 import datetime
 import sys
-
 # ---------------------------------------CONFIGURATION
 
 # server version
@@ -263,10 +262,9 @@ def application(environ, start_response):
                 # calc_md5 = hashlib.md5(request_body).hexdigest()
                 calc_md5 = hashlib.md5()
                 calc_md5.update(request_body)
-                calc_md5.hexdigest()
 
                 # Check MD5 and content. If both is good perform actions
-                if is_md5_matching(md5, calc_md5):
+                if is_md5_matching(md5, calc_md5.hexdigest()):
                     try:
                         data = is_valid_data(request_body, action, 0)
                         output = perform_action(action, data)
@@ -275,8 +273,9 @@ def application(environ, start_response):
                             output = {"message": "DATA-ERROR: The user you tried to add already exists!"}
                     except JutrackValidationError as e:
                         output = e.message
+                        
                 else:
-                    print('expected MD5: ' + str(calc_md5) + ', received MD5: ' + str(md5))
+                    print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
                     status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
                     output = {"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
             except ValueError:
