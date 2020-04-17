@@ -4,6 +4,12 @@ from datetime import datetime
 import csv
 import glob
 import json
+import pwd
+import grp
+import os
+
+uid = pwd.getpwnam("www-data").pw_uid
+gid = grp.getgrnam("www-data").gr_gid
 
 # -------------------- CONFIGRATION -----------------------
 storage_folder = '/mnt/jutrack_data'
@@ -74,6 +80,7 @@ def examine_device(user_folder, users, devices, user_joined, days_in_study, user
 
 # write content
 def write_csv(study_id, csv_data):
+    os.remove(storage_folder + '/jutrack_dashboard_' + study_id + '.csv')
     with open(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         data_keys = ["subject_name", "device_id", "date_registered", "time_in_study", "status_code",
@@ -104,6 +111,9 @@ def write_csv(study_id, csv_data):
                              check_key(data_keys[20], csv_row), check_key(data_keys[21], csv_row),
                              check_key(data_keys[22], csv_row), check_key(data_keys[23], csv_row),
                              check_key(data_keys[24], csv_row)])
+
+    os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)
+    os.chmod(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 0o755)
 
 
 def check_key(key, data):
