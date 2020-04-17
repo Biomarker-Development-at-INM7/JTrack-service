@@ -13,7 +13,7 @@ gid = grp.getgrnam("www-data").gr_gid
 
 # -------------------- CONFIGRATION -----------------------
 storage_folder = '/mnt/jutrack_data'
-studys_folder = storage_folder + '/studys'
+studys_folder = storage_folder + '/studies'
 users_folder = storage_folder + '/users'
 devices_folder = ""
 
