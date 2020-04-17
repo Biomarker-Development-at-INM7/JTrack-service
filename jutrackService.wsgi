@@ -23,7 +23,7 @@ valid_data = [
 ]
 
 storage_folder = '/mnt/jutrack_data'
-studys_folder = storage_folder + '/studys'
+studies_folder = storage_folder + '/studies'
 user_folder = storage_folder + '/users'
 
 
@@ -90,7 +90,7 @@ def is_valid_json(body, verbose):
 
 
 def is_valid_study(study_id):
-    if not os.path.isdir(studys_folder + "/" + study_id):
+    if not os.path.isdir(studies_folder + "/" + study_id):
         raise JutrackValidationError("Invalid study detected: " + str(study_id))
 
 
@@ -149,7 +149,7 @@ def get_filename(data):
     data_name = data[0]['sensorname']
 
     # check for folder and create if a (sub-)folder does not exist
-    data_folder = studys_folder + '/' + study_id + '/' + user_id + '/' + device_id + '/' + data_name
+    data_folder = studies_folder + '/' + study_id + '/' + user_id + '/' + device_id + '/' + data_name
     if not os.path.isdir(data_folder):
         os.makedirs(data_folder)
 
