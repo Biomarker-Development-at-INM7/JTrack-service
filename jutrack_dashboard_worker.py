@@ -5,7 +5,7 @@ from json import JSONDecodeError
 
 # -------------------- CONFIGRATION -----------------------
 storage_folder = '/mnt/jutrack_data'
-studys_folder = storage_folder + "/studys"
+studies_folder = storage_folder + "/studies"
 users_folder = storage_folder + '/users'
 
 sensor_names = ['accelerometer', 'activity', 'application_usage', 'barometer', 'gravity_sensor', 'gyroscope',
@@ -68,7 +68,7 @@ def is_valid_json(body, verbose):
 
 
 def is_valid_study(study_id):
-    if not os.path.isdir(studys_folder + "/" + study_id):
+    if not os.path.isdir(studies_folder + "/" + study_id):
         raise JutrackValidationError("Invalid study detected: " + str(study_id))
 
 
@@ -89,11 +89,11 @@ def get_study_csv(json_data):
     return content
 
 
-def list_studys():
+def list_studies():
     study_list = []
-    for studys in os.listdir(storage_folder):
-        if studys != "users" and studys != "lost+found" and os.path.isdir(storage_folder + '/' + studys):
-            study_list.append(studys)
+    for studies in os.listdir(storage_folder):
+        if studies != "users" and studies != "lost+found" and os.path.isdir(storage_folder + '/' + studies):
+            study_list.append(studies)
 
     return study_list
 
@@ -103,12 +103,12 @@ from datalad.api import Dataset
 
 def create_study(json_data):
     study_id = json_data["name"]
-    folder_name = studys_folder + "/" + study_id
+    folder_name = studies_folder + "/" + study_id
 
     if not os.path.isdir(folder_name):
         os.makedirs(folder_name)
         datalad_dataset = Dataset(folder_name)
-        file_name = studys_folder + "/" + study_id + "/" + study_id + ".json"
+        file_name = studies_folder + "/" + study_id + "/" + study_id + ".json"
         with open(file_name, 'w') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=4)
         datalad_dataset.save(file_name, message="new file " + file_name + " for study")
@@ -148,7 +148,7 @@ def application(environ, start_response):
                     if action == "get_study":
                         output = get_study_csv(data)
                     elif action == "get_study_list":
-                        output = list_studys()
+                        output = list_studies()
                     if output == "NONE":
                         start_response('404 File Not Found', [('Content-type', 'application/json')])
                         return json.dumps({"message": "DATA-ERROR: The content for the selected study was not found!"})
