@@ -2,20 +2,20 @@
 # TODO: add publish(file, to="inm7") and drop(file) later on
 
 # check studys for datalad status and save if necessary
-cd /mnt/jutrack_data/studys
-studys=($(ls -1))
-for study in ${studys}
+cd /mnt/jutrack_data/studies
+studies=($(ls -1))
+for study in ${studies}
 do
     echo ${study}
-    cd /mnt/jutrack_data/studys/${study}
+    cd /mnt/jutrack_data/studies/${study}
     # check datalad status of a study
-    if [[ -d "/mnt/jutrack_data/studys/${study}/.datalad" ]] 
+    if [[ -d "/mnt/jutrack_data/studies/${study}/.datalad" ]] 
     then
     	echo "${study} is datalad dataset."
     else
       echo "${study} will become a datalad dataset."
       # create dataset
-      datalad create --force -D "Add JuTrack dataset ${study}" -c text2git /mnt/jutrack_data/studys/${study}/
+      datalad create --force -D "Add JuTrack dataset ${study}" -c text2git /mnt/jutrack_data/studies/${study}/
     fi
     # save study files
     echo "adding files to study ${study}"
