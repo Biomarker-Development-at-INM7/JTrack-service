@@ -221,7 +221,8 @@ def add_user(data):
 # update an already existent user. If the user is somehow not found, add him
 def update_user(data):
     i = datetime.datetime.now()
-    timestamp = i.isoformat("T").replace(':','_').replace('.',"_")
+    timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
+        + str(i.second)
 
     study_id = data['studyId']
     user_id = data['username']
