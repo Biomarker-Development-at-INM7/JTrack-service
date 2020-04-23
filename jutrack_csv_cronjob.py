@@ -38,14 +38,14 @@ def examine_user(study_folder, study_id, users):
     user_data = []
     user_file = get_json_content(users_folder + "/" + study_id + "_" + users + ".json")
     user_status = user_file["status"]
-    user_joined = user_file["time_joined"]/1000.0
-    user_left = user_file["time_left"]/1000.0
+    user_joined = user_file["time_joined"] / 1000.0
+    user_left = user_file["time_left"] / 1000.0
     if user_left == 0.0:
         time_in_study = time.time() - user_joined
     else:
         time_in_study = user_left - user_joined
 
-    days_in_study = int(time_in_study/86400.0)
+    days_in_study = int(time_in_study / 86400.0)
 
     user_folder = study_folder + '/' + users
     for devices in os.listdir(user_folder):
@@ -58,9 +58,14 @@ def examine_user(study_folder, study_id, users):
 def examine_device(user_folder, users, devices, user_joined, user_left, days_in_study, user_status):
     device_folder = user_folder + '/' + devices
     if user_left == 0.0:
-        device_data = {"subject_name": users, "device_id": devices, "date_registered": datetime.fromtimestamp(user_joined), "date_left_study": "none", "time_in_study": str(days_in_study) + " days", "status_code": user_status}
+        device_data = {"subject_name": users, "device_id": devices,
+                       "date_registered": datetime.fromtimestamp(user_joined), "date_left_study": "none",
+                       "time_in_study": str(days_in_study) + " days", "status_code": user_status}
     else:
-    	device_data = {"subject_name": users, "device_id": devices, "date_registered": datetime.fromtimestamp(user_joined), "date_left_study": datetime.fromtimestamp(user_left), "time_in_study": str(days_in_study) + " days", "status_code": user_status}
+        device_data = {"subject_name": users, "device_id": devices,
+                       "date_registered": datetime.fromtimestamp(user_joined),
+                       "date_left_study": datetime.fromtimestamp(user_left),
+                       "time_in_study": str(days_in_study) + " days", "status_code": user_status}
 
     for sensors in os.listdir(device_folder):
         sensor_folder = device_folder + '/' + sensors
@@ -70,12 +75,13 @@ def examine_device(user_folder, users, devices, user_joined, user_left, days_in_
         last_file_path = sensor_files[number_of_files - 1]
         last_file_data = get_json_content(last_file_path)
         if len(last_file_data) > 0:
-            last_timestamp = last_file_data[len(last_file_data)-1]["timestamp"]/1000.0
+            last_timestamp = last_file_data[len(last_file_data) - 1]["timestamp"] / 1000.0
 
             device_data[sensors + " n_batches"] = number_of_files
             last_date = datetime.fromtimestamp(last_timestamp)
-            device_data[sensors + " last_time_received"] = str(last_date.year) + "-" + str(last_date.month) + "-" + \
-                str(last_date.day) + " " + str(last_date.hour) + ":" + str(last_date.minute)
+            device_data[sensors + " last_time_received"] = str(last_date.year) + "-" + str(last_date.month) + "-" \
+                + str(last_date.day) + " " + str(last_date.hour) + ":" + str(
+                last_date.minute)
 
     return device_data
 
