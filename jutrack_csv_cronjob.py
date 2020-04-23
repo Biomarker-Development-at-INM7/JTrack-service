@@ -57,7 +57,11 @@ def examine_user(study_folder, study_id, users):
 
 def examine_device(user_folder, users, devices, user_joined, user_left, days_in_study, user_status):
     device_folder = user_folder + '/' + devices
-    device_data = {"subject_name": users, "device_id": devices, "date_registered": datetime.fromtimestamp(user_joined), "date_left_study": datetime.fromtimestamp(user_left),
+    if user_left == 0.0:
+	device_data = {"subject_name": users, "device_id": devices, "date_registered": datetime.fromtimestamp(user_joined), "date_left_study": "none",
+                   "time_in_study": str(days_in_study) + " days", "status_code": user_status}
+    else:
+    	device_data = {"subject_name": users, "device_id": devices, "date_registered": datetime.fromtimestamp(user_joined), "date_left_study": datetime.fromtimestamp(user_left),
                    "time_in_study": str(days_in_study) + " days", "status_code": user_status}
 
     for sensors in os.listdir(device_folder):
