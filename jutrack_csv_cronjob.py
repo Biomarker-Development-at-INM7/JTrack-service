@@ -49,15 +49,15 @@ def examine_user(study_folder, study_id, users):
 
     user_folder = study_folder + '/' + users
     for devices in os.listdir(user_folder):
-        row_data = examine_device(user_folder, users, devices, user_joined, days_in_study, user_status)
+        row_data = examine_device(user_folder, users, devices, user_joined, user_left, days_in_study, user_status)
         user_data.append(row_data)
 
     return user_data
 
 
-def examine_device(user_folder, users, devices, user_joined, days_in_study, user_status):
+def examine_device(user_folder, users, devices, user_joined, user_left, days_in_study, user_status):
     device_folder = user_folder + '/' + devices
-    device_data = {"subject_name": users, "device_id": devices, "date_registered": datetime.fromtimestamp(user_joined),
+    device_data = {"subject_name": users, "device_id": devices, "date_registered": datetime.fromtimestamp(user_joined), "date_left_study": datetime.fromtimestamp(user_left),
                    "time_in_study": str(days_in_study) + " days", "status_code": user_status}
 
     for sensors in os.listdir(device_folder):
@@ -83,7 +83,7 @@ def write_csv(study_id, csv_data):
     os.remove(storage_folder + '/jutrack_dashboard_' + study_id + '.csv')
     with open(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        data_keys = ["subject_name", "device_id", "date_registered", "time_in_study", "status_code",
+        data_keys = ["subject_name", "device_id", "date_registered", "date_left_study", "time_in_study", "status_code",
                      sensor_names[0] + " n_batches", sensor_names[0] + " last_time_received",
                      sensor_names[1] + " n_batches", sensor_names[1] + " last_time_received",
                      sensor_names[2] + " n_batches", sensor_names[2] + " last_time_received",
@@ -110,7 +110,7 @@ def write_csv(study_id, csv_data):
                              check_key(data_keys[18], csv_row), check_key(data_keys[19], csv_row),
                              check_key(data_keys[20], csv_row), check_key(data_keys[21], csv_row),
                              check_key(data_keys[22], csv_row), check_key(data_keys[23], csv_row),
-                             check_key(data_keys[24], csv_row)])
+                             check_key(data_keys[24], csv_row), check_key(data_keys[25], csv_row)])
 
     os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)
     os.chmod(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 0o755)
