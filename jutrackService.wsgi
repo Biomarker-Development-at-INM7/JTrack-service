@@ -25,7 +25,7 @@ valid_data = [
 storage_folder = '/mnt/jutrack_data'
 studies_folder = storage_folder + '/studies'
 user_folder = storage_folder + '/users'
-
+content = {}
 
 # ----------------------------------------VALIDATION-------------------------------------------------
 
@@ -192,6 +192,7 @@ def add_user(data):
         os.makedirs(user_folder)
 
     file_name = user_folder + '/' + study_id + '_' + user_id
+    study_json = studies_folder + '/' + study_id + '/' + study_id + '.json'
 
     # Write to file and return the file name for logging
     target_file = file_name + '.json'
@@ -200,6 +201,14 @@ def add_user(data):
     else:
         with open(target_file, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+
+        with open(study_json) as s:
+            content = json.load(s)
+        # add user to enrolled subjects
+        content['enrolled-subjects'].append('user_id')
+        # Write to file and return the file name for logging
+        with open(study_json, 'w') as s:
+            json.dump(content, s, ensure_ascii=False, indent=4)
 
         return target_file
 
