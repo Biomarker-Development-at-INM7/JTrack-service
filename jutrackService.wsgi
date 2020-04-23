@@ -123,6 +123,9 @@ def perform_action(action, data):
         if output_file == "user exists":
             print("USER EXISTS: No changes made!")
             return "user exists"
+        elif output_file == "user is already enrolled":
+            print("USER ALREADY ENROLLED: No changes made to enrolled subjects!")
+            return "user already enrolled"
         else:
             print(output_file + " written to disc.")
 
@@ -205,7 +208,10 @@ def add_user(data):
         with open(study_json) as s:
             content = json.load(s)
         # add user to enrolled subjects
-        content['enrolled-subjects'].append('user_id')
+        if user_id in content['enrolled-subjects']:
+            return "user is already enrolled"
+            
+        content['enrolled-subjects'].append(user_id)
         # Write to file and return the file name for logging
         with open(study_json, 'w') as s:
             json.dump(content, s, ensure_ascii=False, indent=4)
@@ -280,6 +286,9 @@ def application(environ, start_response):
                         if output == "user exists":
                             status = '422 Existing Data Error'
                             output = {"message": "DATA-ERROR: The user you tried to add already exists!"}
+                        elif output == :user already enrolled":
+                            status = '422 Existing Data Error'
+                            output = {"message": "DATA-ERROR: The user you tried to enroll has already been enrolled!"}
                     except JutrackValidationError as e:
                         output = e.message
                         
