@@ -286,7 +286,7 @@ def application(environ, start_response):
                         if output == "user exists":
                             status = '422 Existing Data Error'
                             output = {"message": "DATA-ERROR: The user you tried to add already exists!"}
-                        elif output == :user already enrolled":
+                        elif output == "user already enrolled":
                             status = '422 Existing Data Error'
                             output = {"message": "DATA-ERROR: The user you tried to enroll has already been enrolled!"}
                     except JutrackValidationError as e:
@@ -311,6 +311,12 @@ def application(environ, start_response):
     if isinstance(output, str):
         if 'status' in data:
             output = data
+            content = {}
+            study_json = studies_folder + '/' + data['studyId'] + '/' + study_id + '.json'
+            with open(study_json) as json_file:
+                content = json.load(json_file)
+            output['sensors'] = content['sensor-list']
+            output['freq'] = content['frequency']
         else:
             output = data[0]
     
