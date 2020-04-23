@@ -143,8 +143,7 @@ def perform_action(action, data):
 # add uploaded files in folders according to BIDS format
 def get_filename(data):
     i = datetime.datetime.now()
-    timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
-        + str(i.second)
+    timestamp = i.isoformat("T").replace(':','_').replace('.',"_")
 
     study_id = data[0]['studyId']
     user_id = data[0]['username']
@@ -222,8 +221,7 @@ def add_user(data):
 # update an already existent user. If the user is somehow not found, add him
 def update_user(data):
     i = datetime.datetime.now()
-    timestamp = str(i.year) + '-' + str(i.month) + '-' + str(i.day) + 'T' + str(i.hour) + '-' + str(i.minute) + '-' \
-        + str(i.second)
+    timestamp = i.isoformat("T").replace(':','_').replace('.',"_")
 
     study_id = data['studyId']
     user_id = data['username']
