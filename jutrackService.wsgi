@@ -314,8 +314,10 @@ def application(environ, start_response):
             study_json = studies_folder + '/' + data['studyId'] + '/' + data['studyId'] + '.json'
             with open(study_json) as json_file:
                 content = json.load(json_file)
-            output['sensors'] = content['sensor-list']
-            output['freq'] = content['frequency']
+            if 'sensor-list' in content:
+                output['sensors'] = content['sensor-list']
+            if 'frequency' in content:
+                output['freq'] = content['frequency']
         else:
             output = data[0]
     
