@@ -311,7 +311,7 @@ def application(environ, start_response):
         if 'status' in data:
             output = data
             content = {}
-            study_json = studies_folder + '/' + data['studyId'] + '/' + study_id + '.json'
+            study_json = studies_folder + '/' + data['studyId'] + '/' + data['studyId'] + '.json'
             with open(study_json) as json_file:
                 content = json.load(json_file)
             output['sensors'] = content['sensor-list']
