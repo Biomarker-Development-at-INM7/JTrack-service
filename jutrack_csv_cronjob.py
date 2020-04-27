@@ -88,7 +88,8 @@ def examine_device(user_folder, users, devices, user_joined, user_left, days_in_
 
 # write content
 def write_csv(study_id, csv_data):
-    os.remove(storage_folder + '/jutrack_dashboard_' + study_id + '.csv')
+    if os.path.isfile(storage_folder + '/jutrack_dashboard_' + study_id + '.csv'):
+        os.remove(storage_folder + '/jutrack_dashboard_' + study_id + '.csv')
     with open(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         data_keys = ["subject_name", "device_id", "date_registered", "date_left_study", "time_in_study", "status_code",
@@ -120,8 +121,9 @@ def write_csv(study_id, csv_data):
                              check_key(data_keys[22], csv_row), check_key(data_keys[23], csv_row),
                              check_key(data_keys[24], csv_row), check_key(data_keys[25], csv_row)])
 
-    os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)
-    os.chmod(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 0o755)
+    if os.path.isfile(storage_folder + '/jutrack_dashboard_' + study_id + '.csv'):
+        os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)
+        os.chmod(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 0o755)
 
 
 def check_key(key, data):
