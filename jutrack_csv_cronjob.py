@@ -99,8 +99,11 @@ def examine_device(user_folder, users, devices, user_joined, user_left, days_in_
 
 
 def get_old_sensor_info(path):
-    csv_content = np.genfromtxt(path, delimiter=',')
     old_res = {}
+    csv_content = []
+    with open(path, newline='') as f:
+        reader = csv.reader(f)
+        csv_content = list(reader)
     for row in range(1, len(csv_content)):
         row_content = csv_content[row]
         tmp = {sensor_names[0] + " n_batches": row_content[6],
@@ -150,7 +153,7 @@ def count_new_sensor_files(study_id, user_id, device_id, sensor_name, old_timest
 
 
 def overwrite_csv_nbatches(study_id, csv_row, old_content):
-    if old_content is not None:
+    if old_content is not None and csv_row["subject_name"] in old_content:
         csv_row[6] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[0],
                                             old_content[csv_row["subject_name"]][
                                                 sensor_names[0] + " last_time_received"],
