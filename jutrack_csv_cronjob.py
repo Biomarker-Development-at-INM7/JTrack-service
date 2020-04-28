@@ -85,15 +85,10 @@ def examine_device(user_folder, users, devices, user_joined, user_left, days_in_
             sensor_files = get_files_in_folder(sensor_folder)
             number_of_files = len(sensor_files)
 
-            last_file_path = sensor_files[number_of_files - 1]
-            last_file_data = get_json_content(last_file_path)
-            if len(last_file_data) > 0:
-                last_timestamp = last_file_data[len(last_file_data) - 1]["timestamp"] / 1000.0
-
-                device_data[sensors + " n_batches"] = number_of_files
-                last_date = datetime.fromtimestamp(last_timestamp)
-                device_data[sensors + " last_time_received"] = str(last_date.year) + "-" + str(last_date.month) + "-" \
-                    + str(last_date.day) + " " + str(last_date.hour) + ":" + str(last_date.minute)
+            file_name = sensor_files[number_of_files - 1]
+            timestamp = file_name.split('_')[len(file_name.split('_'))-1].split('.')[0]
+            device_data[sensors + " n_batches"] = number_of_files
+            device_data[sensors + " last_time_received"] = timestamp
 
     return device_data
 
@@ -141,12 +136,12 @@ def count_new_sensor_files(study_id, user_id, device_id, sensor_name, old_timest
     for file_name in get_files_in_folder(
             studys_folder + "/" + study_id + "/" + user_id + "/" + device_id + "/" + sensor_name):
         timestamp = file_name.split('_')[len(file_name.split('_'))-1].split('.')[0]
-        timestamp = timestamp.split('T')[0] + " " + timestamp.split('T')[1]
-        print(timestamp)
-        if timestamp == old_timestamp:
-            count = old_n_batches
+        if len(timestamp.split('T')) == 2:
+            timestamp = timestamp.split('T')[0] + " " + timestamp.split('T')[1]
+        if timestamp == old_timestamp and count < int(old_n_batches):
+            count = int(old_n_batches)
         else:
-            count += 1
+            count = count+1
 
     return count
 
