@@ -56,7 +56,7 @@ def examine_user(study_folder, users):
                                       False)
             user_data.append(row_data)
     else:
-        row_data = examine_device(user_folder, users, user_file["deviceid"], user_joined, user_left, days_in_study,
+        row_data = examine_device(user_folder, user_id, user_file["deviceid"], user_joined, user_left, days_in_study,
                                   user_status, True)
         user_data.append(row_data)
 
