@@ -52,7 +52,7 @@ def examine_user(study_folder, users):
     user_folder = study_folder + '/' + user_id
     if os.path.isdir(user_folder):
         for devices in os.listdir(user_folder):
-            row_data = examine_device(user_folder, users, devices, user_joined, user_left, days_in_study, user_status,
+            row_data = examine_device(user_folder, user_id, devices, user_joined, user_left, days_in_study, user_status,
                                       False)
             user_data.append(row_data)
     else:
@@ -132,18 +132,17 @@ def get_old_sensor_info(path):
 
 
 def count_new_sensor_files(study_id, user_id, device_id, sensor_name, old_timestamp, old_n_batches):
-    if not os.path.isdir(studys_folder + "/" + study_id + "/" + user_id + "/" + device_id + "/" + sensor_name):
+    folder_name = studys_folder + "/" + study_id + "/" + user_id + "/" + device_id + "/" + sensor_name
+    if not os.path.isdir(folder_name):
         return 0
 
     count = 0
 
     for file_name in get_files_in_folder(
             studys_folder + "/" + study_id + "/" + user_id + "/" + device_id + "/" + sensor_name):
-        data = get_json_content(file_name)
-        timestamp = data["timestamp"] / 1000.0
-        timestamp = datetime.fromtimestamp(timestamp)
-        timestamp = str(timestamp.year) + "-" + str(timestamp.month) + "-" + str(timestamp.day) + " " + str(
-            timestamp.hour) + ":" + str(timestamp.minute)
+        timestamp = file_name.split('_')[len(file_name.split('_'))-1].split('.')[0]
+        timestamp = timestamp.split('T')[0] + " " + timestamp.split('T')[1]
+        print(timestamp)
         if timestamp == old_timestamp:
             count = old_n_batches
         else:
@@ -154,43 +153,43 @@ def count_new_sensor_files(study_id, user_id, device_id, sensor_name, old_timest
 
 def overwrite_csv_nbatches(study_id, csv_row, old_content):
     if old_content is not None and csv_row["subject_name"] in old_content:
-        csv_row[6] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[0],
+        csv_row[sensor_names[0] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[0],
                                             old_content[csv_row["subject_name"]][
                                                 sensor_names[0] + " last_time_received"],
                                             old_content[csv_row["subject_name"]][sensor_names[0] + " n_batches"])
-        csv_row[8] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[1],
+        csv_row[sensor_names[1] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[1],
                                             old_content[csv_row["subject_name"]][
                                                 sensor_names[1] + " last_time_received"],
                                             old_content[csv_row["subject_name"]][sensor_names[1] + " n_batches"])
-        csv_row[10] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[2],
+        csv_row[sensor_names[2] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[2],
                                              old_content[csv_row["subject_name"]][
                                                  sensor_names[2] + " last_time_received"],
                                              old_content[csv_row["subject_name"]][sensor_names[2] + " n_batches"])
-        csv_row[12] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[3],
+        csv_row[sensor_names[3] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[3],
                                              old_content[csv_row["subject_name"]][
                                                  sensor_names[3] + " last_time_received"],
                                              old_content[csv_row["subject_name"]][sensor_names[3] + " n_batches"])
-        csv_row[14] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[4],
+        csv_row[sensor_names[4] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[4],
                                              old_content[csv_row["subject_name"]][
                                                  sensor_names[4] + " last_time_received"],
                                              old_content[csv_row["subject_name"]][sensor_names[4] + " n_batches"])
-        csv_row[16] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[5],
+        csv_row[sensor_names[5] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[5],
                                              old_content[csv_row["subject_name"]][
                                                  sensor_names[5] + " last_time_received"],
                                              old_content[csv_row["subject_name"]][sensor_names[5] + " n_batches"])
-        csv_row[18] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[6],
+        csv_row[sensor_names[6] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[6],
                                              old_content[csv_row["subject_name"]][
                                                  sensor_names[6] + " last_time_received"],
                                              old_content[csv_row["subject_name"]][sensor_names[6] + " n_batches"])
-        csv_row[20] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[7],
+        csv_row[sensor_names[7] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[7],
                                              old_content[csv_row["subject_name"]][
                                                  sensor_names[7] + " last_time_received"],
                                              old_content[csv_row["subject_name"]][sensor_names[7] + " n_batches"])
-        csv_row[22] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[8],
+        csv_row[sensor_names[8] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[8],
                                              old_content[csv_row["subject_name"]][
                                                  sensor_names[8] + " last_time_received"],
                                              old_content[csv_row["subject_name"]][sensor_names[8] + " n_batches"])
-        csv_row[24] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[9],
+        csv_row[sensor_names[9] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[9],
                                              old_content[csv_row["subject_name"]][
                                                  sensor_names[9] + " last_time_received"],
                                              old_content[csv_row["subject_name"]][sensor_names[9] + " n_batches"])

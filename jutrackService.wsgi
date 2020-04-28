@@ -143,7 +143,7 @@ def perform_action(action, data):
 # add uploaded files in folders according to BIDS format
 def get_filename(data):
     i = datetime.datetime.now()
-    timestamp = i.isoformat("T").replace(':','_').replace('.',"_")
+    timestamp = i.isoformat("T").replace(':','-').replace('.',"-")
 
     study_id = data[0]['studyId']
     user_id = data[0]['username']
