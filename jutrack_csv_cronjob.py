@@ -66,18 +66,18 @@ def examine_user(study_folder, users):
 def examine_device(user_folder, users, devices, user_joined, user_left, days_in_study, user_status, new_user):
     if new_user:
         device_data = {"subject_name": users, "device_id": devices,
-                       "date_registered": datetime.fromtimestamp(user_joined), "date_left_study": "none",
+                       "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"), "date_left_study": "none",
                        "time_in_study": str(days_in_study) + " days", "status_code": user_status}
     else:
         device_folder = user_folder + '/' + devices
         if user_left == 0.0:
             device_data = {"subject_name": users, "device_id": devices,
-                           "date_registered": datetime.fromtimestamp(user_joined), "date_left_study": "none",
+                           "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"), "date_left_study": "none",
                            "time_in_study": str(days_in_study) + " days", "status_code": user_status}
         else:
             device_data = {"subject_name": users, "device_id": devices,
-                           "date_registered": datetime.fromtimestamp(user_joined),
-                           "date_left_study": datetime.fromtimestamp(user_left),
+                           "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"),
+                           "date_left_study": datetime.fromtimestamp(user_left).strftime("%Y-%m-%d %H:%M:%S"),
                            "time_in_study": str(days_in_study) + " days", "status_code": user_status}
 
         for sensors in os.listdir(device_folder):
@@ -87,6 +87,11 @@ def examine_device(user_folder, users, devices, user_joined, user_left, days_in_
 
             file_name = sensor_files[number_of_files - 1]
             timestamp = file_name.split('_')[len(file_name.split('_'))-1].split('.')[0]
+            if 'T' in timestamp:
+                date_send = timestamp.split('T')[0]
+                time_send = timestamp.split('T')[1]
+                timestamp = date_send + " " + time_send.replace('-', ':')
+            #  print(timestamp)
             device_data[sensors + " n_batches"] = number_of_files
             device_data[sensors + " last_time_received"] = timestamp
 
@@ -270,5 +275,5 @@ def invoke_csv_for_all_studys():
 
 if __name__ == "__main__":
     invoke_csv_for_all_studys()
-    with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
-        log_file.write("Cron successful on: " + str(datetime.now()) + "\n")
+    with open("/mnt/jutrack_data/jutrack_csv.log", "w") as log_file:
+        log_file.write("Cron last successful on: " + str(datetime.now()) + "\n")
