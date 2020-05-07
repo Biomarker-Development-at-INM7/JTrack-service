@@ -24,6 +24,7 @@ valid_data = [
 
 storage_folder = '/mnt/jutrack_data'
 studies_folder = storage_folder + '/studies'
+junk_folder = storage_folder + '/junk'
 user_folder = storage_folder + '/users'
 content = {}
 
@@ -65,10 +66,10 @@ def is_valid_data(body, action, verbose=0):
     if 'status' in data:
         return data
 
-    # study_id = data[0]['studyId']
+    study_id = data[0]['studyId']
     # user_id = data[0]['username']
 
-    # is_valid_study(study_id)
+    is_valid_study(study_id, data)
     # is_valid_user(study_id, username)
 
     if action == "write_data":
@@ -89,8 +90,32 @@ def is_valid_json(body, verbose):
     return data
 
 
-def is_valid_study(study_id):
+def is_valid_study(study_id, data):
     if not os.path.isdir(studies_folder + "/" + study_id):
+        if not os.path.isdir(junk_folder + "/" + study_id)
+            os.makedirs(junk_folder + "/" + study_id)
+        i = datetime.datetime.now()
+        timestamp = i.strftime("%Y-%m-%dT%H-%M-%S")
+
+        study_id = data[0]['studyId']
+        user_id = data[0]['username']
+        device_id = data[0]['deviceid']
+        data_name = data[0]['sensorname']
+
+        file_name = junk_folder + "/" + study_id + '/' + study_id + '_' + user_id + '_' + device_id + '_' + data_name + '_' + timestamp
+        target_file = filename + '.json'
+        counter = 1
+
+        while os.path.isfile(target_file):
+            sys.stderr.write(target_file + " was already existing, therefore " + filename + '_' + str(counter) + '.json'
+                             + " will be created.\r\n")
+            target_file = filename + '_' + str(counter) + '.json'
+            counter += 1
+
+        with open(target_file, 'w') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        # TODO: email-alert that JUNK was written
+
         raise JutrackValidationError("Invalid study detected: " + str(study_id))
 
 
