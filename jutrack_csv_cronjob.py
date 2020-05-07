@@ -87,6 +87,12 @@ def examine_device(user_folder, users, devices, user_joined, user_left, days_in_
 
             file_name = sensor_files[number_of_files - 1]
             timestamp = file_name.split('_')[len(file_name.split('_'))-1].split('.')[0]
+            if len(timestamp) == 1:
+                timestamp = file_name.split('_')[len(file_name.split('_'))-2]
+            elif len(timestamp) == 6:
+                file_parts = file_name.split('_')
+                date_send = file_parts[len(file_parts)-4]
+                timestamp = date_send + "-" + file_parts[len(file_parts)-3] + "-" + file_parts[len(file_parts)-2]
             if 'T' in timestamp:
                 date_send = timestamp.split('T')[0]
                 time_send = timestamp.split('T')[1]
