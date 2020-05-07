@@ -114,7 +114,22 @@ def is_valid_study(study_id, data):
 
         with open(target_file, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+
         # TODO: email-alert that JUNK was written
+        sender = 'www-data@jutrack.inm7.de'
+        receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
+        message = """From: JuTrack <www-data@jutrack.inm7.de>
+        To: Jona Marcus Fischer <j.fischer@fz-juelich.de>, Michael Stolz <m.stolz@fz-juelich.de>
+        Subject: JuTrack files written to Junk directory
+
+        Following file was written to Junk folder: """ + target_file
+
+        try:
+            smtpObj = smtplib.SMTP('mail.fz-juelich.de', port=25)
+            smtpObj.sendmail(sender, receivers, message)
+            print("Successfully sent email")
+        except SMTPException:
+            print ("Error: unable to send email")
 
         raise JutrackValidationError("Invalid study detected: " + str(study_id))
 
