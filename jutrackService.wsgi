@@ -92,7 +92,7 @@ def is_valid_json(body, verbose):
 
 def is_valid_study(study_id, data):
     if not os.path.isdir(studies_folder + "/" + study_id):
-        if not os.path.isdir(junk_folder + "/" + study_id)
+        if not os.path.isdir(junk_folder + "/" + study_id):
             os.makedirs(junk_folder + "/" + study_id)
         i = datetime.datetime.now()
         timestamp = i.strftime("%Y-%m-%dT%H-%M-%S")
@@ -355,6 +355,8 @@ def application(environ, start_response):
                 content = json.load(json_file)
             if 'sensor-list' in content:
                 output['sensors'] = content['sensor-list']
+            if 'duration' in content:
+                output['study duration'] = content['duration']
             if 'frequency' in content:
                 output['freq'] = content['frequency']
         else:
