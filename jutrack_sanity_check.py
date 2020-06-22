@@ -40,10 +40,11 @@ def go_through_detected_files(files, verbose):
                 except JSONDecodeError as e:
                     print("ERROR: The file " + file + " is not a valid json file. \tERROR-Message: " + e.msg)
                 json_file.close()
-            if "users" in file and content is not None and 'status' in content:
+            if "users" in file and content is not None and 'status' in content and content['time_left'] == 0:
                 with open(file, "w") as json_file:
                     if 'status' in content and (content['status'] == 3 or content['status'] == 2):
-                        content['time_left'] = time.time()
+                        print("Timestamp set in file " + file)
+                        content['time_left'] = int(time.time() * 1000.0)
                         json.dump(content, json_file, ensure_ascii=False, indent=4)
                 json_file.close()
 

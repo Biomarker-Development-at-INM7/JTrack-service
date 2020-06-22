@@ -281,7 +281,7 @@ def update_user(data):
     if status == 1:
         content['time_left'] = data['time_left']
     elif status == 3 or status == 2:
-        content['time_left'] = time.time()
+        content['time_left'] = int(time.time()*1000.0)
     elif status == 0:
         content['time_left'] = ''
         # Write to file and return the file name for logging
