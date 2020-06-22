@@ -3,6 +3,7 @@ import os
 import json
 import argparse
 import glob
+import datetime
 
 # define folder locations
 from json import JSONDecodeError
@@ -33,9 +34,15 @@ def go_through_detected_files(files, verbose):
         else:
             with open(file) as json_file:
                 try:
-                    json.load(json_file)
+                    content = json.load(json_file)
                     if verbose:
                         print("NOTICE: The file " + file + " is a valid json file.")
+                    if "users" in file:
+                        if content['status'] == 3 or content['status'] == 2:
+                            i = datetime.datetime.now()
+                            timestamp = i.strftime("%Y-%m-%dT%H-%M-%S")
+                            content['time_left'] = timestamp
+                            json.dump(content, json_file, ensure_ascii=False, indent=4)
                 except JSONDecodeError as e:
                     print("ERROR: The file " + file + " is not a valid json file. \tERROR-Message: " + e.msg)
                 json_file.close()
