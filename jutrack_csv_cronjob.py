@@ -12,7 +12,7 @@ import numpy as np
 uid = pwd.getpwnam("www-data").pw_uid
 gid = grp.getgrnam("www-data").gr_gid
 
-# -------------------- CONFIGRATION -----------------------
+# -------------------- CONFIGURATION -----------------------
 storage_folder = '/mnt/jutrack_data'
 studys_folder = storage_folder + '/studies'
 users_folder = storage_folder + '/users'

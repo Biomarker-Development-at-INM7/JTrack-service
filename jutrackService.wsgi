@@ -279,7 +279,7 @@ def update_user(data):
     content['status'] = status
     if status == 1:
         content['time_left'] = data['time_left']
-    elif status == 3:
+    elif status == 3 or status == 2:
         content['time_left'] = timestamp
     elif status == 0:
         content['time_left'] = ''
@@ -356,7 +356,7 @@ def application(environ, start_response):
             if 'sensor-list' in content:
                 output['sensors'] = content['sensor-list']
             if 'duration' in content:
-                output['study duration'] = content['duration']
+                output['study_duration'] = content['duration']
             if 'frequency' in content:
                 output['freq'] = content['frequency']
         else:
