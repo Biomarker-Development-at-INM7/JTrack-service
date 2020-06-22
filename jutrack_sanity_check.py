@@ -32,7 +32,7 @@ def go_through_detected_files(files, verbose):
         if not file.endswith(".json"):
             print("ERROR: The file " + file + " is not a json file.")
         else:
-            with open(file) as json_file:
+            with open(file, "r+") as json_file:
                 try:
                     content = json.load(json_file)
                     if verbose:
