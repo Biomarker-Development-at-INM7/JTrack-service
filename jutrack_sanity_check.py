@@ -3,7 +3,7 @@ import os
 import json
 import argparse
 import glob
-import datetime
+import time
 
 # define folder locations
 from json import JSONDecodeError
@@ -32,19 +32,19 @@ def go_through_detected_files(files, verbose):
         if not file.endswith(".json"):
             print("ERROR: The file " + file + " is not a json file.")
         else:
-            with open(file, "r+") as json_file:
+            with open(file, "r") as json_file:
                 try:
                     content = json.load(json_file)
                     if verbose:
                         print("NOTICE: The file " + file + " is a valid json file.")
-                    if "users" in file:
-                        if content['status'] == 3 or content['status'] == 2:
-                            i = datetime.datetime.now()
-                            timestamp = i.strftime("%Y-%m-%dT%H-%M-%S")
-                            content['time_left'] = timestamp
-                            json.dump(content, json_file, ensure_ascii=False, indent=4)
                 except JSONDecodeError as e:
                     print("ERROR: The file " + file + " is not a valid json file. \tERROR-Message: " + e.msg)
+                json_file.close()
+            if "users" in file and content is not None and 'status' in content:
+                with open(file, "w") as json_file:
+                    if 'status' in content and (content['status'] == 3 or content['status'] == 2):
+                        content['time_left'] = time.time()
+                        json.dump(content, json_file, ensure_ascii=False, indent=4)
                 json_file.close()
 
 

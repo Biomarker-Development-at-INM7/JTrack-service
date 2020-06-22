@@ -4,6 +4,7 @@ import hashlib
 import json
 import datetime
 import sys
+import time
 # ---------------------------------------CONFIGURATION
 
 # server version
@@ -280,7 +281,7 @@ def update_user(data):
     if status == 1:
         content['time_left'] = data['time_left']
     elif status == 3 or status == 2:
-        content['time_left'] = timestamp
+        content['time_left'] = time.time()
     elif status == 0:
         content['time_left'] = ''
         # Write to file and return the file name for logging
