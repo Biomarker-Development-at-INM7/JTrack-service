@@ -191,6 +191,26 @@ def get_filename(data):
     device_id = data[0]['deviceid']
     data_name = data[0]['sensorname']
 
+    chunk_x = 1
+    while study_id == "" and len(data) > chunk_x:
+        study_id = data[chunk_x]['studyId']
+        chunk_x += 1
+
+    chunk_x = 1
+    while user_id == "" and len(data) > chunk_x:
+        user_id = data[chunk_x]['username']
+        chunk_x += 1
+
+    chunk_x = 1
+    while device_id == "" and len(data) > chunk_x:
+        device_id = data[chunk_x]['deviceid']
+        chunk_x += 1
+
+    chunk_x = 1
+    while data_name == "" and len(data) > chunk_x:
+        data_name = data[chunk_x]['sensorname']
+        chunk_x += 1
+
     # check for folder and create if a (sub-)folder does not exist
     data_folder = studies_folder + '/' + study_id + '/' + user_id + '/' + device_id + '/' + data_name
     if not os.path.isdir(data_folder):
