@@ -357,6 +357,12 @@ def application(environ, start_response):
                         
                 else:
                     print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
+                    calc_md5 = hashlib.md5()
+                    tst = request_body.decode("utf-8")
+                    print(type(tst))
+                    calc_md5.update(tst)
+                    print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
+                    print('CHECKING') 
                     status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
                     output = {"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
             except ValueError:
@@ -371,7 +377,7 @@ def application(environ, start_response):
         output = {"message": "Expected POST-request!"}
 
     # aaaaaand respond to client
-    if isinstance(output, str):
+    if isinstance(output, str) and data is not None:
         if 'status' in data:
             output = data
             content = {}
