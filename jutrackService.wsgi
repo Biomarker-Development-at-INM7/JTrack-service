@@ -296,6 +296,10 @@ def update_user(data):
     else:
         return add_user(data)
 
+    for key in data:
+        if not key in content:
+            content[key] = data[key]
+
     # append status and if status is left from client or unknown add time_left for study leave
     content['status'] = status
     if status == 1:
