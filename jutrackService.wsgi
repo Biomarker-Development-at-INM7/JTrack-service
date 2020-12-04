@@ -5,6 +5,8 @@ import json
 import datetime
 import sys
 import time
+import smtplib
+
 # ---------------------------------------CONFIGURATION
 
 # server version
@@ -28,6 +30,7 @@ studies_folder = storage_folder + '/studies'
 junk_folder = storage_folder + '/junk'
 user_folder = storage_folder + '/users'
 content = {}
+
 
 # ----------------------------------------VALIDATION-------------------------------------------------
 
@@ -116,33 +119,69 @@ def is_valid_study(study_id, data):
         with open(target_file, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
-        # TODO: email-alert that JUNK was written
+        # alert via mail
         sender = 'www-data@jutrack.inm7.de'
         receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
-        message = """From: JuTrack <www-data@jutrack.inm7.de>
-        To: Jona Marcus Fischer <j.fischer@fz-juelich.de>, Michael Stolz <m.stolz@fz-juelich.de>
-        Subject: JuTrack files written to Junk directory
-
-        Following file was written to Junk folder: """ + target_file
-
-        try:
-            smtpObj = smtplib.SMTP('mail.fz-juelich.de', port=25)
-            smtpObj.sendmail(sender, receivers, message)
-            print("Successfully sent email")
-        except SMTPException:
-            print ("Error: unable to send email")
+        send_mail(sender, receivers, "JuTrack files written to Junk directory",
+                  "(Invalid Study)Following file was written to Junk folder: " + target_file)
 
         raise JutrackValidationError("Invalid study detected: " + str(study_id))
 
 
-def is_valid_user(study_id, username):
+def is_valid_user(study_id, username, sensorname):
     if not os.path.isfile(user_folder + "/" + study_id + "_" + username + '.json'):
+        # alert via mail
+        sender = 'www-data@jutrack.inm7.de'
+        receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
+        send_mail(sender, receivers, "Invalid user detected",
+                  "(Invalid user) Following user_id tried to send data: " + username)
+
         raise JutrackValidationError("Invalid user for study " + study_id + " detected: " + str(username))
+    else:
+        with open(user_folder + "/" + study_id + "_" + username + '.json') as f:
+            user_data = json.load(f)
+
+        if sensorname == "ema":
+            if 'ema_state' in user_data and user_data['ema_state'] == 2:
+                # alert via mail
+                sender = 'www-data@jutrack.inm7.de'
+                receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
+                send_mail(sender, receivers, "Data from left user detected",
+                          "(Left user) Following user_id tried to send data but already left ema: " + username)
+
+                raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
+
+        else:
+            if 'status' in user_data and user_data['status'] == 2:
+                # alert via mail
+                sender = 'www-data@jutrack.inm7.de'
+                receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
+                send_mail(sender, receivers, "Data from left user detected",
+                          "(Left user) Following user_id tried to send data but already left the study: " + username)
+
+                raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
+
+
+def is_valid_device(study_id, user_id, device_id):
+    with open(user_folder + "/" + study_id + "_" + user_id + '.json') as f:
+        user_data = json.load(f)
+    if not user_data["deviceid"] == device_id:
+        # alert via mail
+        sender = 'www-data@jutrack.inm7.de'
+        receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
+        send_mail(sender, receivers, "Unaccepted deviceID detected",
+                  "(Unknown device) Following deviceID tried to send data for user "+str(user_id)+": " + str(device_id))
+        raise JutrackValidationError("Unaccepted deviceID for user"+str(user_id)+": " + str(device_id))
 
 
 def is_valid_sensor(sensorname):
     if sensorname not in valid_data:
         # we only play with stuff we know...
+        # alert via mail
+        sender = 'www-data@jutrack.inm7.de'
+        receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
+        send_mail(sender, receivers, "Unaccepted sensorname detected",
+                  "(Unknown device) Following sensor tried to send data : " + str(sensorname))
         raise JutrackValidationError("Unaccepted sensorname detected: " + str(sensorname))
 
 
@@ -237,6 +276,18 @@ def write_file(filename, data):
     return target_file
 
 
+def send_mail(sender, receivers, subject, text):
+    mail_to = ",".join(receivers)
+    message = 'To: {}\nFrom: {}\nSubject: {}\n\n{}'.format(mail_to, sender, subject, text)
+    try:
+        smtp_obj = smtplib.SMTP('mail.fz-juelich.de', port=25)
+        smtp_obj.sendmail(sender, receivers, message)
+        print("Successfully sent email")
+        smtp_obj.quit()
+    except smtplib.SMTPException:
+        print("Error: unable to send email")
+
+
 # ----------------------------------------EXECUTION--------------------------------------------------
 
 
@@ -249,7 +300,6 @@ def exec_file(data):
 def add_user(data):
     study_id = data['studyId']
     user_id = data['username']
-
     # check for folder and create if a (sub-)folder does not exist
     if not os.path.isdir(user_folder):
         os.makedirs(user_folder)
