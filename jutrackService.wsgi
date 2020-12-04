@@ -122,7 +122,7 @@ def is_valid_study(study_id, data):
         device_id = data[0]['deviceid']
         data_name = data[0]['sensorname']
 
-        file_name = junk_folder + "/" + study_id + '/' + study_id + '_' + user_id + '_' + device_id + '_' + data_name + '_' + timestamp
+        filename = junk_folder + "/" + study_id + '/' + study_id + '_' + user_id + '_' + device_id + '_' + data_name + '_' + timestamp
         target_file = filename + '.json'
         counter = 1
 
@@ -249,6 +249,7 @@ def get_filename(data):
     device_id = data[0]['deviceid']
     data_name = data[0]['sensorname']
 
+    # choose the first non-empty values to name the file properly
     chunk_x = 1
     while study_id == "" and len(data) > chunk_x:
         study_id = data[chunk_x]['studyId']
@@ -351,51 +352,48 @@ def add_user(data):
             json.dump(data, f, ensure_ascii=False, indent=4)
 
         with open(study_json) as s:
-            content = json.load(s)
+            study_data = json.load(s)
         # add user to enrolled subjects
-        if user_id in content['enrolled-subjects']:
+        if user_id in study_data['enrolled-subjects']:
             return "user is already enrolled"
-            
-        content['enrolled-subjects'].append(user_id)
+
+        study_data['enrolled-subjects'].append(user_id)
         # Write to file and return the file name for logging
         with open(study_json, 'w') as s:
-            json.dump(content, s, ensure_ascii=False, indent=4)
+            json.dump(study_data, s, ensure_ascii=False, indent=4)
 
         return target_file
 
 
 # update an already existent user. If the user is somehow not found, add him
 def update_user(data):
-    i = datetime.datetime.now()
-    timestamp = i.strftime("%Y-%m-%dT%H-%M-%S")
-
     study_id = data['studyId']
     user_id = data['username']
     status = data['status']
 
-    file_name = user_folder + '/' + study_id + '_' + user_id
+    file_name = user_folder + '/' + study_id + '_' + user_id + '.json'
 
-    if os.path.isfile(file_name + '.json'):
-        with open(file_name + '.json') as f:
-            content = json.load(f)
+    if os.path.isfile(file_name):
+        with open(file_name) as f:
+            user_data = json.load(f)
     else:
         return add_user(data)
 
     for key in data:
-        if not key in content:
-            content[key] = data[key]
+        if key not in user_data:
+            user_data[key] = data[key]
 
     # append status and if status is left from client or unknown add time_left for study leave
-    content['status'] = status
+    user_data['status'] = status
     if status == 1:
-        content['time_left'] = data['time_left']
+        user_data['time_left'] = data['time_left']
     elif status == 3 or status == 2:
-        content['time_left'] = int(time.time()*1000.0)
+        user_data['time_left'] = int(time.time() * 1000.0)
     elif status == 0:
-        content['time_left'] = ''
+        user_data['time_left'] = ''
         # Write to file and return the file name for logging
-    with open(file_name + '.json', 'w') as f:
-        json.dump(content, f, ensure_ascii=False, indent=4)
+    with open(file_name, 'w') as f:
+        json.dump(user_data, f, ensure_ascii=False, indent=4)
 
     return file_name
 
@@ -439,7 +437,7 @@ def application(environ, start_response):
             # read request body
             try:
                 request_body = environ['wsgi.input'].read()
-                
+
                 # read passed MD5 value
                 if 'HTTP_MD5' in environ:
                     md5 = environ['HTTP_MD5']
@@ -487,19 +485,18 @@ def application(environ, start_response):
     if isinstance(output, str):
         if 'status' in data:
             output = data
-            content = {}
             study_json = studies_folder + '/' + data['studyId'] + '/' + data['studyId'] + '.json'
             with open(study_json) as json_file:
-                content = json.load(json_file)
-            if 'sensor-list' in content:
-                output['sensors'] = content['sensor-list']
-            if 'duration' in content:
-                output['study_duration'] = content['duration']
-            if 'frequency' in content:
-                output['freq'] = content['frequency']
+                study_content = json.load(json_file)
+            if 'sensor-list' in study_content:
+                output['sensors'] = study_content['sensor-list']
+            if 'duration' in study_content:
+                output['study_duration'] = study_content['duration']
+            if 'frequency' in study_content:
+                output['freq'] = study_content['frequency']
         else:
             output = data[0]
-    
+
     start_response(status, [('Content-type', 'application/json')])
     output_dump = json.dumps(output)
     return [output_dump.encode('utf-8')]
