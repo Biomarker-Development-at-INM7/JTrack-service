@@ -22,7 +22,8 @@ valid_data = [
     'location',
     'magnetic_sensor',
     'rotation_vector',
-    'linear_acceleration'
+    'linear_acceleration',
+    'ema'
 ]
 
 storage_folder = '/mnt/jutrack_data'
@@ -211,7 +212,10 @@ def perform_action(action, data):
 
         return 'SUCCESS: User successfully added'
     elif action == "update_user":
-        output_file = update_user(data)
+        if "status_ema" in data:
+            output_file = update_ema(data)
+        else:
+            output_file = update_user(data)
         if output_file == "":
             print('No changes made')
         else:
@@ -310,7 +314,23 @@ def add_user(data):
     # Write to file and return the file name for logging
     target_file = file_name + '.json'
     if os.path.isfile(target_file):
-        return "user exists"
+        with open(target_file) as f:
+            user_data = json.load(f)
+
+        if 'status_ema' in user_data and 'status' in user_data:
+            return "user exists"
+        elif 'status' in user_data and 'status_ema' in data:
+            user_data['status_ema'] = 1
+            with open(target_file, 'w') as f:
+                json.dump(user_data, f, ensure_ascii=False, indent=4)
+            return "ema registered"
+        elif 'status_ema' in user_data and 'status' in data:
+            user_data['status'] = 0
+            with open(target_file, 'w') as f:
+                json.dump(user_data, f, ensure_ascii=False, indent=4)
+            return "main app registered"
+        else:
+            return "user exists"
     else:
         with open(target_file, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
@@ -362,7 +382,31 @@ def update_user(data):
     with open(file_name + '.json', 'w') as f:
         json.dump(content, f, ensure_ascii=False, indent=4)
 
-    return file_name + '.json'
+    return file_name
+
+
+# update the ema state of a user
+def update_ema(data):
+    study_id = data['studyId']
+    user_id = data['username']
+
+    file_name = user_folder + '/' + study_id + '_' + user_id + '.json'
+
+    if os.path.isfile(file_name):
+        with open(file_name) as f:
+            user_data = json.load(f)
+    else:
+        return add_user(data)
+
+    for key in data:
+        if key not in user_data:
+            user_data[key] = data[key]
+
+    # Write to file and return the file name for logging
+    with open(file_name, 'w') as f:
+        json.dump(user_data, f, ensure_ascii=False, indent=4)
+
+    return file_name
 
 
 # ----------------------------------------APPLICATION------------------------------------------------
