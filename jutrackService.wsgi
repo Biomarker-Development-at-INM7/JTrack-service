@@ -52,6 +52,17 @@ class JutrackValidationError(JutrackError):
         self.message = message
 
 
+class JutrackLeftUserError(JutrackError):
+    """Exception raised for send data of an already left user.
+
+    Attributes:
+        message -- explanation of the error
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
 # compare MD5 values
 def is_md5_matching(md5, calc_md5):
     if calc_md5 == md5:
@@ -72,15 +83,19 @@ def is_valid_data(body, action, verbose=0):
         return data
 
     study_id = data[0]['studyId']
-    # user_id = data[0]['username']
+    user_id = data[0]['username']
+    device_id = data[0]['deviceid']
 
     is_valid_study(study_id, data)
-    # is_valid_user(study_id, username)
 
     if action == "write_data":
         sensorname = data[0]['sensorname']
+        is_valid_user(study_id, user_id, sensorname)
+        is_valid_device(study_id, user_id, device_id)
         is_valid_sensor(sensorname)
-
+    else:
+        is_valid_user(study_id, user_id, "")
+        is_valid_device(study_id, user_id, device_id)
     return data
 
 
@@ -89,8 +104,8 @@ def is_valid_json(body, verbose):
         data = json.loads(body)
         if verbose:
             print("NOTICE: The uploaded content is valid json.")
-    except Error as e:
-        raise JutrackValidationError("ERROR: The uploaded content is not valid json. \tERROR-Message: " + e.msg)
+    except Exception as e:
+        raise JutrackValidationError("ERROR: The uploaded content is not valid json.")
 
     return data
 
@@ -436,23 +451,27 @@ def application(environ, start_response):
                 calc_md5.update(request_body)
 
                 # Check MD5 and content. If both is good perform actions
-                if is_md5_matching(md5, calc_md5.hexdigest()):
-                    try:
-                        data = is_valid_data(request_body, action, 0)
-                        output = perform_action(action, data)
-                        if output == "user exists":
-                            status = '422 Existing Data Error'
-                            output = {"message": "DATA-ERROR: The user you tried to add already exists!"}
-                        elif output == "user already enrolled":
-                            status = '422 Existing Data Error'
-                            output = {"message": "DATA-ERROR: The user you tried to enroll has already been enrolled!"}
-                    except JutrackValidationError as e:
-                        output = e.message
-                        
-                else:
-                    print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
-                    status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
-                    output = {"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
+                # if is_md5_matching(md5, calc_md5.hexdigest()):
+                try:
+                    data = is_valid_data(request_body, action, 0)
+                    output = perform_action(action, data)
+                    if output == "user exists":
+                        status = '422 Existing Data Error'
+                        output = {"message": "DATA-ERROR: The user you tried to add already exists!"}
+                    elif output == "user already enrolled":
+                        status = '422 Existing Data Error'
+                        output = {"message": "DATA-ERROR: The user you tried to enroll has already been enrolled!"}
+                except JutrackValidationError as e:
+                    output = {"message": e.message}
+                except JutrackLeftUserError as e:
+                    status = '403 Forbidden'
+                    output = {"message": e.message}
+
+                # else:
+                print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
+                #    status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
+                #    output = {
+                #        "message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
             except ValueError:
                 status = '500 Internal Server Error: ValueError occured during JSON parsing!'
                 output = {"message": "The wsgi service was not able to parse the json content."}
