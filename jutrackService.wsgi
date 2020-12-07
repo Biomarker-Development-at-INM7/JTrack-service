@@ -482,7 +482,7 @@ def application(environ, start_response):
         output = {"message": "Expected POST-request!"}
 
     # aaaaaand respond to client
-    if isinstance(output, str):
+    if isinstance(output, str) and data is not None:
         if 'status' in data:
             output = data
             study_json = studies_folder + '/' + data['studyId'] + '/' + data['studyId'] + '.json'
