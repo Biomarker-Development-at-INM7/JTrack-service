@@ -130,6 +130,9 @@ def is_valid_study(study_id, data):
             device_id = "nodevice" 
 
         filename = junk_folder + "/" + study_id + '/' + study_id + '_' + user_id + '_' + device_id + '_' + data_name + '_' + timestamp
+        data_folder = junk_folder + "/" + study_id
+        if not os.path.isdir(data_folder):
+            os.makedirs(data_folder)
         target_file = filename + '.json'
         counter = 1
 
