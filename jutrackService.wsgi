@@ -122,6 +122,13 @@ def is_valid_study(study_id, data):
         device_id = data[0]['deviceid']
         data_name = data[0]['sensorname']
 
+        if study_id.strip() == "":
+            study_id = "nonameStudy"
+        if user_id.strip() == "":
+            user_id = "noname" 
+        if device_id.strip() == "":
+            device_id = "nodevice" 
+
         filename = junk_folder + "/" + study_id + '/' + study_id + '_' + user_id + '_' + device_id + '_' + data_name + '_' + timestamp
         target_file = filename + '.json'
         counter = 1
@@ -141,7 +148,7 @@ def is_valid_study(study_id, data):
         send_mail(sender, receivers, "JuTrack files written to Junk directory",
                   "(Invalid Study)Following file was written to Junk folder: " + target_file)
 
-        raise JutrackValidationError("Invalid study detected: " + str(study_id))
+        raise JutrackValidationError("Invalid study detected: " + str(study_id) + ", UserID:" + str(data[0]['username']))
 
 
 def is_valid_user(study_id, username, sensorname):
@@ -454,7 +461,7 @@ def application(environ, start_response):
                 calc_md5.update(request_body)
 
                 # Check MD5 and content. If both is good perform actions
-                # if is_md5_matching(md5, calc_md5.hexdigest()):
+                #if is_md5_matching(md5, calc_md5.hexdigest()):
                 try:
                     data = is_valid_data(request_body, action, 0)
                     output = perform_action(action, data)
@@ -473,8 +480,7 @@ def application(environ, start_response):
                 # else:
                 print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
                 #    status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
-                #    output = {
-                #        "message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
+                #    output = {"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
             except ValueError:
                 status = '500 Internal Server Error: ValueError occured during JSON parsing!'
                 output = {"message": "The wsgi service was not able to parse the json content."}
