@@ -345,12 +345,12 @@ def add_user(data):
 
         if 'status_ema' in user_data and 'status' in user_data:
             return "user exists"
-        elif 'status' in user_data and 'status_ema' in data:
+        elif not 'status_ema' in user_data and 'status_ema' in data:
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
             return "ema registered"
-        elif 'status_ema' in user_data and 'status' in data:
+        elif not 'status' in user_data and 'status' in data:
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
@@ -361,7 +361,7 @@ def add_user(data):
             receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
             send_mail(sender, receivers, "No status found",
                       "(ERROR)No status value existing for user" + str(user_id) + " in study " + str(study_id) + "!")
-            raise JutrackValidationError("Unaccepted sensorname detected: " + str(sensorname))
+            raise JutrackValidationError("Unaccepted status value detected")
     else:
         with open(target_file, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
