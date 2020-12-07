@@ -158,7 +158,7 @@ def is_valid_user(study_id, username, sensorname):
             user_data = json.load(f)
 
         if sensorname == "ema":
-            if 'ema_state' in user_data and user_data['ema_state'] == 2:
+            if 'status_ema' in user_data and user_data['status_ema'] == 2:
                 # alert via mail
                 sender = 'www-data@jutrack.inm7.de'
                 receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
@@ -181,7 +181,7 @@ def is_valid_user(study_id, username, sensorname):
 def is_valid_device(study_id, user_id, device_id):
     with open(user_folder + "/" + study_id + "_" + user_id + '.json') as f:
         user_data = json.load(f)
-    if not user_data["deviceid"] == device_id:
+    if not ("deviceid" in user_data and user_data["deviceid"] == device_id) and not ( "deviceid_ema" in user_data and user_data["deviceid_ema"] == device_id):
         # alert via mail
         sender = 'www-data@jutrack.inm7.de'
         receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
@@ -336,17 +336,22 @@ def add_user(data):
         if 'status_ema' in user_data and 'status' in user_data:
             return "user exists"
         elif 'status' in user_data and 'status_ema' in data:
-            user_data['status_ema'] = 1
-            with open(target_file, 'w') as f:
-                json.dump(user_data, f, ensure_ascii=False, indent=4)
+            for key in data:
+                if key not in user_data:
+                    user_data[key] = data[key]
             return "ema registered"
         elif 'status_ema' in user_data and 'status' in data:
-            user_data['status'] = 0
-            with open(target_file, 'w') as f:
-                json.dump(user_data, f, ensure_ascii=False, indent=4)
+            for key in data:
+                if key not in user_data:
+                    user_data[key] = data[key]
             return "main app registered"
         else:
-            return "user exists"
+            # alert via mail
+            sender = 'www-data@jutrack.inm7.de'
+            receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
+            send_mail(sender, receivers, "No status found",
+                      "(ERROR)No status value existing for user" + str(user_id) + " in study " + str(study_id) + "!")
+            raise JutrackValidationError("Unaccepted sensorname detected: " + str(sensorname))
     else:
         with open(target_file, 'w') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
@@ -494,6 +499,17 @@ def application(environ, start_response):
                 output['study_duration'] = study_content['duration']
             if 'frequency' in study_content:
                 output['freq'] = study_content['frequency']
+        elif 'status_ema' in data:
+            output = data
+            study_json = studies_folder + '/' + data['studyId'] + '/' + data['studyId'] + '.json'
+            with open(study_json) as json_file:
+                study_content = json.load(json_file)
+            if 'sensor-list' in study_content:
+                output['sensors'] = study_content['sensor-list']
+            if 'duration' in study_content:
+                output['study_duration'] = study_content['duration']
+            if 'survey' in study_content:
+                output['survey'] = study_content['survey']
         else:
             output = data[0]
 
