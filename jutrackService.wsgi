@@ -329,17 +329,20 @@ def add_user(data):
     # Write to file and return the file name for logging
     target_file = file_name + '.json'
     if os.path.isfile(target_file):
+        with open(study_json) as s:
+            study_data = json.load(s)
+
         with open(target_file) as f:
             user_data = json.load(f)
 
         if 'status_ema' in user_data and 'status' in user_data:
             return "user exists"
-        elif 'status_ema' not in user_data and 'status_ema' in data:
+        elif 'status_ema' not in user_data and 'status_ema' in data and 'survey' in study_data:
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
             return "ema registered"
-        elif 'status' not in user_data and 'status' in data:
+        elif 'status' not in user_data and 'status' in data and 'frequency' in study_data:
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
