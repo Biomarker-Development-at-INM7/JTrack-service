@@ -164,21 +164,21 @@ def is_valid_user(study_id, username, sensorname):
         with open(user_folder + "/" + study_id + "_" + username + '.json') as f:
             user_data = json.load(f)
 
-        if sensorname == "ema":
-            if 'status_ema' in user_data and user_data['status_ema'] == 2:
+        # if sensorname == "ema":
+        #    if 'status_ema' in user_data and user_data['status_ema'] == 2:
                 # alert via mail
-                write_output_message("(Left user) Following user_id tried to send data but already left ema: "
-                                     + username)
+        #        write_output_message("(Left user) Following user_id tried to send data but already left ema: "
+        #                            + username)
 
-                raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
+        #        raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
 
-        else:
-            if 'status' in user_data and user_data['status'] == 2:
+        #else:
+        #    if 'status' in user_data and user_data['status'] == 2:
                 # alert via mail
-                write_output_message("(Left user) Following user_id tried to send data but already left the study: "
-                                     + username)
+        #        write_output_message("(Left user) Following user_id tried to send data but already left the study: "
+        #                             + username)
 
-                raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
+        #        raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
 
 
 def is_valid_device(study_id, user_id, device_id):
@@ -349,15 +349,19 @@ def add_user(data):
             return "main app registered"
         else:
             # alert via mail
-            write_output_message("(ERROR)No status value existing for user" + str(user_id) +
-                                 " in study " + str(study_id) + "!")
+            write_output_message("(ERROR)Insufficient status value given for user " + str(user_id) +
+                                 " in study " + str(study_id) + ", user could not be added to use the app!")
             raise JutrackValidationError("Unaccepted status value detected")
     else:
-        with open(target_file, 'w') as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-
         with open(study_json) as s:
             study_data = json.load(s)
+        if ('status_ema' in data and 'survey' in study_data) or ('status' in data and 'frequency' in study_data):
+            with open(target_file, 'w') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+        else:
+            write_output_message("(ERROR)User " + str(user_id) +
+                                 " can not be added to study " + str(study_id) + ", the study is not eligible to use this application type!")
+            raise JutrackValidationError("Unaccepted status value detected")
         # add user to enrolled subjects
         if user_id in study_data['enrolled-subjects']:
             return "user is already enrolled"
@@ -434,20 +438,20 @@ def write_output_message(message):
     date = i.strftime("%Y-%m-%d")
     timestamp = i.strftime("%Y-%m-%dT%H-%M-%S")
 
-    file_name = "./daily_mail.txt"
+    file_name = "/var/www/jutrack.inm7.de/service/daily_mail.txt"
     # write first line
     if not os.path.isfile(file_name):
-        with open(file_name, 'w') as f:
+        with open(file_name, 'w+') as f:
             f.write(date + '\n' + timestamp + ', ' + message + '\n')
         uid = pwd.getpwnam("debian").pw_uid
         gid = grp.getgrnam("debian").gr_gid
         os.chown(file_name, uid, gid)
-        os.chmod(file_name, 0o755)
+        os.chmod(file_name, 0o777)
     else:
         with open(file_name, 'r') as f:
-            first_line = f.readline()
+            first_line = f.readline().strip()
         if first_line == date:
-            with open(file_name, 'a') as f:
+            with open(file_name, 'a+') as f:
                 f.write(timestamp + ', ' + message + '\n')
         else:
             with open(file_name, 'r+') as f:
@@ -500,6 +504,7 @@ def application(environ, start_response):
                         status = '422 Existing Data Error'
                         output = {"message": "DATA-ERROR: The user you tried to enroll has already been enrolled!"}
                 except JutrackValidationError as e:
+                    status = '409 Conflict'
                     output = {"message": e.message}
                 except JutrackLeftUserError as e:
                     status = '403 Forbidden'

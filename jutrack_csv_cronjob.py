@@ -39,9 +39,26 @@ def examine_user(study_folder, users):
     user_data = []
     user_file = get_json_content(users_folder + "/" + users)
     user_id = user_file["username"]
-    user_status = user_file["status"]
-    user_joined = user_file["time_joined"] / 1000.0
-    user_left = user_file["time_left"] / 1000.0
+    if "status" in user_file:
+        user_status = user_file["status"]
+    elif "status_ema" in user_file:
+        user_status = user_file["status_ema"]
+    else:
+        user_status = 0
+
+    if "time_joined" in user_file:
+        user_joined = user_file["time_joined"] / 1000.0
+    elif "time_joined_ema" in user_file:
+        user_joined = user_file["time_joined_ema"] / 1000.0
+    else:
+        user_joined = time.time()
+
+    if "time_left" in user_file:
+        user_left = user_file["time_left"] / 1000.0
+    elif "time_left_ema" in user_file:
+        user_left = user_file["time_left_ema"] / 1000.0
+    else:
+        user_left = 0.0
     if user_left == 0.0:
         time_in_study = time.time() - user_joined
     else:
@@ -56,10 +73,14 @@ def examine_user(study_folder, users):
                                       False)
             user_data.append(row_data)
     else:
-        row_data = examine_device(user_folder, user_id, user_file["deviceid"], user_joined, user_left, days_in_study,
-                                  user_status, True)
-        user_data.append(row_data)
-
+        if "deviceid" in user_file:
+            row_data = examine_device(user_folder, user_id, user_file["deviceid"], user_joined, user_left, days_in_study,
+                                      user_status, True)
+            user_data.append(row_data)
+        elif "deviceid_ema" in user_file:
+            row_data = examine_device(user_folder, user_id, user_file["deviceid_ema"], user_joined, user_left, days_in_study,
+                                      user_status, True)
+            user_data.append(row_data)
     return user_data
 
 
