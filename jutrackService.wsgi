@@ -464,7 +464,7 @@ def write_output_message(message):
                              {}
                              """.format("\n".join(f.readlines()))
             sender = 'www-data@jutrack.inm7.de'
-            receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
+            receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de', 'mehran.sahandi@yahoo.com']
             send_mail(sender, receivers, "JuTrack Daily Error Report", mail_text)
             with open(file_name, 'w') as f:
                 f.write(date + '\n' + timestamp + ', ' + message + '\n')
