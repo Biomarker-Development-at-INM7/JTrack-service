@@ -164,21 +164,25 @@ def is_valid_user(study_id, username, sensorname):
         with open(user_folder + "/" + study_id + "_" + username + '.json') as f:
             user_data = json.load(f)
 
-        # if sensorname == "ema":
-        #    if 'status_ema' in user_data and user_data['status_ema'] == 2:
-                # alert via mail
-        #        write_output_message("(Left user) Following user_id tried to send data but already left ema: "
-        #                            + username)
+        if sensorname == "ema":
+            if 'status_ema' in user_data and user_data['status_ema'] == 2 and left_day > 1:
+                left_day = int((time.time() - user_file["time_left_ema"] / 1000.0) / 86400.0)
+                if left_day > 1:
+                    # alert via mail
+                    write_output_message("(Left user) Following user_id tried to send data but already left ema: "
+                                        + username)
 
-        #        raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
+                    raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
 
-        #else:
-        #    if 'status' in user_data and user_data['status'] == 2:
-                # alert via mail
-        #        write_output_message("(Left user) Following user_id tried to send data but already left the study: "
-        #                             + username)
+        else:
+            if 'status' in user_data and user_data['status'] == 2:
+                left_day = int((time.time() - user_file["time_left"] / 1000.0) / 86400.0)
+                if left_day > 1:
+                    # alert via mail
+                    write_output_message("(Left user) Following user_id tried to send data but already left the study: "
+                                         + username)
 
-        #        raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
+                    raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
 
 
 def is_valid_device(study_id, user_id, device_id):
