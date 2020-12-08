@@ -125,9 +125,9 @@ def is_valid_study(study_id, data):
         if study_id.strip() == "":
             study_id = "nonameStudy"
         if user_id.strip() == "":
-            user_id = "noname" 
+            user_id = "noname"
         if device_id.strip() == "":
-            device_id = "nodevice" 
+            device_id = "nodevice"
 
         filename = junk_folder + "/" + study_id + '/' + study_id + '_' + user_id + '_' + device_id + '_' + data_name + '_' + timestamp
         data_folder = junk_folder + "/" + study_id
@@ -146,21 +146,16 @@ def is_valid_study(study_id, data):
             json.dump(data, f, ensure_ascii=False, indent=4)
 
         # alert via mail
-        sender = 'www-data@jutrack.inm7.de'
-        receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
-        send_mail(sender, receivers, "JuTrack files written to Junk directory",
-                  "(Invalid Study)Following file was written to Junk folder: " + target_file)
+        write_output_message("(Invalid Study)Following file was written to Junk folder: " + target_file)
 
-        raise JutrackValidationError("Invalid study detected: " + str(study_id) + ", UserID:" + str(data[0]['username']))
+        raise JutrackValidationError(
+            "Invalid study detected: " + str(study_id) + ", UserID:" + str(data[0]['username']))
 
 
 def is_valid_user(study_id, username, sensorname):
     if not os.path.isfile(user_folder + "/" + study_id + "_" + username + '.json'):
         # alert via mail
-        sender = 'www-data@jutrack.inm7.de'
-        receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
-        send_mail(sender, receivers, "Invalid user detected",
-                  "(Invalid user) Following user_id tried to send data: " + username)
+        write_output_message("(Invalid user) Following user_id tried to send data: " + username)
 
         raise JutrackValidationError("Invalid user for study " + study_id + " detected: " + str(username))
     else:
@@ -170,20 +165,16 @@ def is_valid_user(study_id, username, sensorname):
         if sensorname == "ema":
             if 'status_ema' in user_data and user_data['status_ema'] == 2:
                 # alert via mail
-                sender = 'www-data@jutrack.inm7.de'
-                receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
-                send_mail(sender, receivers, "Data from left user detected",
-                          "(Left user) Following user_id tried to send data but already left ema: " + username)
+                write_output_message("(Left user) Following user_id tried to send data but already left ema: "
+                                     + username)
 
                 raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
 
         else:
             if 'status' in user_data and user_data['status'] == 2:
                 # alert via mail
-                sender = 'www-data@jutrack.inm7.de'
-                receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
-                send_mail(sender, receivers, "Data from left user detected",
-                          "(Left user) Following user_id tried to send data but already left the study: " + username)
+                write_output_message("(Left user) Following user_id tried to send data but already left the study: "
+                                     + username)
 
                 raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
 
@@ -191,23 +182,19 @@ def is_valid_user(study_id, username, sensorname):
 def is_valid_device(study_id, user_id, device_id):
     with open(user_folder + "/" + study_id + "_" + user_id + '.json') as f:
         user_data = json.load(f)
-    if not ("deviceid" in user_data and user_data["deviceid"] == device_id) and not ( "deviceid_ema" in user_data and user_data["deviceid_ema"] == device_id):
+    if not ("deviceid" in user_data and user_data["deviceid"] == device_id) and not (
+            "deviceid_ema" in user_data and user_data["deviceid_ema"] == device_id):
         # alert via mail
-        sender = 'www-data@jutrack.inm7.de'
-        receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
-        send_mail(sender, receivers, "Unaccepted deviceID detected",
-                  "(Unknown device) Following deviceID tried to send data for user "+str(user_id)+": " + str(device_id))
-        raise JutrackValidationError("Unaccepted deviceID for user"+str(user_id)+": " + str(device_id))
+        write_output_message("(Unknown device) Following deviceID tried to send data for user " + str(user_id) + ": "
+                             + str(device_id))
+        raise JutrackValidationError("Unaccepted deviceID for user" + str(user_id) + ": " + str(device_id))
 
 
 def is_valid_sensor(sensorname):
     if sensorname not in valid_data:
         # we only play with stuff we know...
         # alert via mail
-        sender = 'www-data@jutrack.inm7.de'
-        receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
-        send_mail(sender, receivers, "Unaccepted sensorname detected",
-                  "(Unknown device) Following sensor tried to send data : " + str(sensorname))
+        write_output_message("(Unknown device) Following sensor tried to send data : " + str(sensorname))
         raise JutrackValidationError("Unaccepted sensorname detected: " + str(sensorname))
 
 
@@ -345,22 +332,20 @@ def add_user(data):
 
         if 'status_ema' in user_data and 'status' in user_data:
             return "user exists"
-        elif not 'status_ema' in user_data and 'status_ema' in data:
+        elif 'status_ema' not in user_data and 'status_ema' in data:
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
             return "ema registered"
-        elif not 'status' in user_data and 'status' in data:
+        elif 'status' not in user_data and 'status' in data:
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
             return "main app registered"
         else:
             # alert via mail
-            sender = 'www-data@jutrack.inm7.de'
-            receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
-            send_mail(sender, receivers, "No status found",
-                      "(ERROR)No status value existing for user" + str(user_id) + " in study " + str(study_id) + "!")
+            write_output_message("(ERROR)No status value existing for user" + str(user_id) +
+                                 " in study " + str(study_id) + "!")
             raise JutrackValidationError("Unaccepted status value detected")
     else:
         with open(target_file, 'w') as f:
@@ -437,6 +422,36 @@ def update_ema(data):
     return file_name
 
 
+# write daily error summary
+def write_output_message(message):
+    # get date
+    i = datetime.datetime.now()
+    date = i.strftime("%Y-%m-%d")
+    timestamp = i.strftime("%Y-%m-%dT%H-%M-%S")
+
+    file_name = "/var/www/jutrack.inm7.de/service/daily_mail.txt"
+    # write first line
+    if not os.path.isfile(file_name):
+        with open(file_name, 'w') as f:
+            f.write(date + '\n')
+    else:
+        with open(file_name, 'r') as f:
+            first_line = f.readline()
+        if first_line == date:
+            with open(file_name, 'a') as f:
+                f.write(timestamp + ', ' + message + '\n')
+        else:
+            with open(file_name, 'r+') as f:
+                mail_text = """
+                             {}
+                             """.format("\n".join(f.readlines()))
+            sender = 'www-data@jutrack.inm7.de'
+            receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
+            send_mail(sender, receivers, "JuTrack Daily Error Report", mail_text)
+            with open(file_name, 'w') as f:
+                f.write(date + '\n')
+
+
 # ----------------------------------------APPLICATION------------------------------------------------
 
 
@@ -464,7 +479,7 @@ def application(environ, start_response):
                 calc_md5.update(request_body)
 
                 # Check MD5 and content. If both is good perform actions
-                #if is_md5_matching(md5, calc_md5.hexdigest()):
+                # if is_md5_matching(md5, calc_md5.hexdigest()):
                 try:
                     data = is_valid_data(request_body, action, 0)
                     output = perform_action(action, data)
