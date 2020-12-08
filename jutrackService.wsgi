@@ -165,18 +165,18 @@ def is_valid_user(study_id, username, sensorname):
             user_data = json.load(f)
 
         if sensorname == "ema":
-            if 'status_ema' in user_data and user_data['status_ema'] == 2 and left_day > 1:
-                left_day = int((time.time() - user_file["time_left_ema"] / 1000.0) / 86400.0)
+            if 'status_ema' in user_data and user_data['status_ema'] == 2:
+                left_day = int((time.time() - user_data["time_left_ema"] / 1000.0) / 86400.0)
                 if left_day > 1:
                     # alert via mail
                     write_output_message("(Left user) Following user_id tried to send data but already left ema: "
-                                        + username)
+                                         + username)
 
                     raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
 
         else:
             if 'status' in user_data and user_data['status'] == 2:
-                left_day = int((time.time() - user_file["time_left"] / 1000.0) / 86400.0)
+                left_day = int((time.time() - user_data["time_left"] / 1000.0) / 86400.0)
                 if left_day > 1:
                     # alert via mail
                     write_output_message("(Left user) Following user_id tried to send data but already left the study: "
@@ -364,7 +364,8 @@ def add_user(data):
                 json.dump(data, f, ensure_ascii=False, indent=4)
         else:
             write_output_message("(ERROR)User " + str(user_id) +
-                                 " can not be added to study " + str(study_id) + ", the study is not eligible to use this application type!")
+                                 " can not be added to study " + str(
+                study_id) + ", the study is not eligible to use this application type!")
             raise JutrackValidationError("Unaccepted status value detected")
         # add user to enrolled subjects
         if user_id in study_data['enrolled-subjects']:
@@ -467,7 +468,6 @@ def write_output_message(message):
             send_mail(sender, receivers, "JuTrack Daily Error Report", mail_text)
             with open(file_name, 'w') as f:
                 f.write(date + '\n' + timestamp + ', ' + message + '\n')
-                
 
 
 # ----------------------------------------APPLICATION------------------------------------------------
