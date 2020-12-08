@@ -433,7 +433,7 @@ def write_output_message(message):
     # write first line
     if not os.path.isfile(file_name):
         with open(file_name, 'w') as f:
-            f.write(date + '\n')
+            f.write(date + '\n' + timestamp + ', ' + message + '\n')
     else:
         with open(file_name, 'r') as f:
             first_line = f.readline()
@@ -449,7 +449,8 @@ def write_output_message(message):
             receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de']
             send_mail(sender, receivers, "JuTrack Daily Error Report", mail_text)
             with open(file_name, 'w') as f:
-                f.write(date + '\n')
+                f.write(date + '\n' + timestamp + ', ' + message + '\n')
+                
 
 
 # ----------------------------------------APPLICATION------------------------------------------------
