@@ -6,6 +6,8 @@ import datetime
 import sys
 import time
 import smtplib
+import pwd
+import grp
 
 # ---------------------------------------CONFIGURATION
 
@@ -79,7 +81,7 @@ def is_valid_data(body, action, verbose=0):
     if len(data) == 0:
         raise JutrackValidationError("ERROR: The uploaded content was empty.")
 
-    if 'status' in data:
+    if 'status' in data or 'status_ema' in data:
         return data
 
     study_id = data[0]['studyId']
@@ -429,11 +431,15 @@ def write_output_message(message):
     date = i.strftime("%Y-%m-%d")
     timestamp = i.strftime("%Y-%m-%dT%H-%M-%S")
 
-    file_name = "/var/www/jutrack.inm7.de/service/daily_mail.txt"
+    file_name = "./daily_mail.txt"
     # write first line
     if not os.path.isfile(file_name):
         with open(file_name, 'w') as f:
             f.write(date + '\n' + timestamp + ', ' + message + '\n')
+        uid = pwd.getpwnam("debian").pw_uid
+        gid = grp.getgrnam("debian").gr_gid
+        os.chown(file_name, uid, gid)
+        os.chmod(file_name, 0o755)
     else:
         with open(file_name, 'r') as f:
             first_line = f.readline()
