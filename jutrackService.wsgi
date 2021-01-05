@@ -10,7 +10,6 @@ import pwd
 import grp
 
 # ---------------------------------------CONFIGURATION
-
 # server version
 __version__ = 0
 
@@ -34,6 +33,9 @@ junk_folder = storage_folder + '/junk'
 user_folder = storage_folder + '/users'
 content = {}
 
+uid = pwd.getpwnam("www-data").pw_uid
+s_uid = pwd.getpwnam("jfischer").pw_uid
+gid = grp.getgrnam("jutrack").gr_gid
 
 # ----------------------------------------VALIDATION-------------------------------------------------
 
@@ -295,6 +297,9 @@ def write_file(filename, data):
 
     with open(target_file, 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
+    os.chmod(target_file, 0o666)
+    #os.chown(target_file, uid, gid)
+    #os.chmod(target_file, 0o664)
 
     return target_file
 
@@ -345,12 +350,16 @@ def add_user(data):
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
-            return "ema registered"
+            with open(target_file, 'w') as f:
+                json.dump(user_data, f, ensure_ascii=False, indent=4)
+            return "EMA registered, " + target_file + " written to disc."
         elif 'status' not in user_data and 'status' in data and 'frequency' in study_data:
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
-            return "main app registered"
+            with open(target_file, 'w') as f:
+                json.dump(user_data, f, ensure_ascii=False, indent=4)
+            return "Main App registered, " + target_file + " written to disc."
         else:
             # alert via mail
             write_output_message("(ERROR)Insufficient status value given for user " + str(user_id) +
@@ -362,6 +371,9 @@ def add_user(data):
         if ('status_ema' in data and 'survey' in study_data) or ('status' in data and 'frequency' in study_data):
             with open(target_file, 'w') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
+            os.chmod(target_file, 0o666)
+            #os.chown(target_file, uid, gid)
+            #os.chmod(target_file, 0o664)
         else:
             write_output_message("(ERROR)User " + str(user_id) +
                                  " can not be added to study " + str(
@@ -416,6 +428,7 @@ def update_user(data):
 def update_ema(data):
     study_id = data['studyId']
     user_id = data['username']
+    status_ema = data['status_ema']
 
     file_name = user_folder + '/' + study_id + '_' + user_id + '.json'
 
@@ -428,6 +441,15 @@ def update_ema(data):
     for key in data:
         if key not in user_data:
             user_data[key] = data[key]
+
+    # append status and if status is left from client or unknown add time_left for study leave
+    user_data['status_ema'] = status_ema
+    if status_ema == 1:
+        user_data['time_left_ema'] = data['time_left_ema']
+    elif status_ema == 3 or status_ema == 2:
+        user_data['time_left_ema'] = int(time.time() * 1000.0)
+    elif status == 0:
+        user_data['time_left_ema'] = ''
 
     # Write to file and return the file name for logging
     with open(file_name, 'w') as f:
@@ -448,10 +470,9 @@ def write_output_message(message):
     if not os.path.isfile(file_name):
         with open(file_name, 'w+') as f:
             f.write(date + '\n' + timestamp + ', ' + message + '\n')
-        uid = pwd.getpwnam("debian").pw_uid
-        gid = grp.getgrnam("debian").gr_gid
-        os.chown(file_name, uid, gid)
-        os.chmod(file_name, 0o777)
+
+        os.chmod(file_name, 0o666)
+        # os.chown(file_name, s_uid, gid)
     else:
         with open(file_name, 'r') as f:
             first_line = f.readline().strip()
@@ -464,7 +485,7 @@ def write_output_message(message):
                              {}
                              """.format("\n".join(f.readlines()))
             sender = 'www-data@jutrack.inm7.de'
-            receivers = ['j.fischer@fz-juelich.de', 'm.stolz@fz-juelich.de', 'mehran.sahandi@yahoo.com']
+            receivers = ['j.fischer@fz-juelich.de', 'michael.stolz@alumni.fh-aachen.de', 'mehran.sahandi@yahoo.com']
             send_mail(sender, receivers, "JuTrack Daily Error Report", mail_text)
             with open(file_name, 'w') as f:
                 f.write(date + '\n' + timestamp + ', ' + message + '\n')

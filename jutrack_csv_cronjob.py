@@ -10,7 +10,7 @@ import os
 import numpy as np
 
 uid = pwd.getpwnam("www-data").pw_uid
-gid = grp.getgrnam("www-data").gr_gid
+gid = grp.getgrnam("jutrack").gr_gid
 
 # -------------------- CONFIGURATION -----------------------
 storage_folder = '/mnt/jutrack_data'
@@ -19,7 +19,7 @@ users_folder = storage_folder + '/users'
 devices_folder = ""
 
 sensor_names = ['accelerometer', 'activity', 'application_usage', 'barometer', 'gravity_sensor', 'gyroscope',
-                'location', 'magnetic_sensor', 'rotation_vector', 'linear_acceleration']
+                'location', 'magnetic_sensor', 'rotation_vector', 'linear_acceleration', 'ema']
 
 
 def prepare_csv(study_id):
@@ -39,38 +39,52 @@ def examine_user(study_folder, users):
     user_data = []
     user_file = get_json_content(users_folder + "/" + users)
     user_id = user_file["username"]
+    user_status = 0
+    user_status_ema = 0
+
     if "status" in user_file:
         user_status = user_file["status"]
-    elif "status_ema" in user_file:
-        user_status = user_file["status_ema"]
-    else:
-        user_status = 0
+    if "status_ema" in user_file:
+        user_status_ema = user_file["status_ema"]
+
+    user_joined = time.time()
+    user_joined_ema = time.time()
 
     if "time_joined" in user_file:
         user_joined = user_file["time_joined"] / 1000.0
-    elif "time_joined_ema" in user_file:
-        user_joined = user_file["time_joined_ema"] / 1000.0
-    else:
-        user_joined = time.time()
+    if "time_joined_ema" in user_file:
+        user_joined_ema = user_file["time_joined_ema"] / 1000.0
+
+    user_left = 0.0
+    user_left_ema = 0.0
 
     if "time_left" in user_file:
         user_left = user_file["time_left"] / 1000.0
-    elif "time_left_ema" in user_file:
-        user_left = user_file["time_left_ema"] / 1000.0
-    else:
-        user_left = 0.0
+    if "time_left_ema" in user_file:
+        user_left_ema = user_file["time_left_ema"] / 1000.0
+
     if user_left == 0.0:
         time_in_study = time.time() - user_joined
     else:
         time_in_study = user_left - user_joined
 
+    if user_left_ema == 0.0:
+       time_in_study_ema = time.time() - user_joined_ema
+    else:
+       time_in_study_ema = user_left_ema - user_joined_ema
+
     days_in_study = int(time_in_study / 86400.0)
+    days_in_study_ema = int(time_in_study_ema / 86400.0)
 
     user_folder = study_folder + '/' + user_id
     if os.path.isdir(user_folder):
         for devices in os.listdir(user_folder):
-            row_data = examine_device(user_folder, user_id, devices, user_joined, user_left, days_in_study, user_status,
-                                      False)
+            if "deviceid" in user_file and devices == user_file["deviceid"]:
+                row_data = examine_device(user_folder, user_id, devices, user_joined, user_left, days_in_study, user_status,
+                                          False)
+            else:
+                row_data = examine_device(user_folder, user_id, devices, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema,
+                                          False)
             user_data.append(row_data)
     else:
         if "deviceid" in user_file:
@@ -78,8 +92,8 @@ def examine_user(study_folder, users):
                                       user_status, True)
             user_data.append(row_data)
         elif "deviceid_ema" in user_file:
-            row_data = examine_device(user_folder, user_id, user_file["deviceid_ema"], user_joined, user_left, days_in_study,
-                                      user_status, True)
+            row_data = examine_device(user_folder, user_id, user_file["deviceid_ema"], user_joined_ema, user_left_ema, days_in_study_ema,
+                                      user_status_ema, True)
             user_data.append(row_data)
     return user_data
 
@@ -143,6 +157,7 @@ def get_old_sensor_info(path):
                sensor_names[7] + " n_batches": row_content[20],
                sensor_names[8] + " n_batches": row_content[22],
                sensor_names[9] + " n_batches": row_content[24],
+               sensor_names[10] + " n_batches": row_content[26],
                sensor_names[0] + " last_time_received": row_content[7],
                sensor_names[1] + " last_time_received": row_content[9],
                sensor_names[2] + " last_time_received": row_content[11],
@@ -152,7 +167,8 @@ def get_old_sensor_info(path):
                sensor_names[6] + " last_time_received": row_content[19],
                sensor_names[7] + " last_time_received": row_content[21],
                sensor_names[8] + " last_time_received": row_content[23],
-               sensor_names[9] + " last_time_received": row_content[25]}
+               sensor_names[9] + " last_time_received": row_content[25],
+               sensor_names[10] + " last_time_received": row_content[27]}
         old_res[row_content[0]] = tmp
 
     return old_res
@@ -220,6 +236,10 @@ def overwrite_csv_nbatches(study_id, csv_row, old_content):
                                              old_content[csv_row["subject_name"]][
                                                  sensor_names[9] + " last_time_received"],
                                              old_content[csv_row["subject_name"]][sensor_names[9] + " n_batches"])
+        csv_row[sensor_names[10] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"], csv_row["device_id"], sensor_names[10],
+                                             old_content[csv_row["subject_name"]][
+                                                 sensor_names[10] + " last_time_received"],
+                                             old_content[csv_row["subject_name"]][sensor_names[10] + " n_batches"])
 
     return csv_row
 
@@ -242,7 +262,8 @@ def write_csv(study_id, csv_data):
                      sensor_names[6] + " n_batches", sensor_names[6] + " last_time_received",
                      sensor_names[7] + " n_batches", sensor_names[7] + " last_time_received",
                      sensor_names[8] + " n_batches", sensor_names[8] + " last_time_received",
-                     sensor_names[9] + " n_batches", sensor_names[9] + " last_time_received"]
+                     sensor_names[9] + " n_batches", sensor_names[9] + " last_time_received",
+                     sensor_names[10] + " n_batches", sensor_names[10] + " last_time_received"]
 
         writer.writerow(data_keys)
         for row_number in range(len(csv_data)):
@@ -260,11 +281,12 @@ def write_csv(study_id, csv_data):
                              check_key(data_keys[18], csv_row), check_key(data_keys[19], csv_row),
                              check_key(data_keys[20], csv_row), check_key(data_keys[21], csv_row),
                              check_key(data_keys[22], csv_row), check_key(data_keys[23], csv_row),
-                             check_key(data_keys[24], csv_row), check_key(data_keys[25], csv_row)])
+                             check_key(data_keys[24], csv_row), check_key(data_keys[25], csv_row),
+                             check_key(data_keys[26], csv_row), check_key(data_keys[27], csv_row)])
 
     if os.path.isfile(storage_folder + '/jutrack_dashboard_' + study_id + '.csv'):
         os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)
-        os.chmod(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 0o755)
+        os.chmod(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 0o664)
 
 
 def check_key(key, data):
