@@ -78,39 +78,47 @@ def examine_user(study_folder, users):
 
     user_folder = study_folder + '/' + user_id
     if os.path.isdir(user_folder):
-        for devices in os.listdir(user_folder):
+        if len(os.listdir(user_folder)) == 1:
+            devices = os.listdir(user_folder)[0]
             if "deviceid" in user_file and devices == user_file["deviceid"]:
-                row_data = examine_device(user_folder, user_id, devices, user_joined, user_left, days_in_study, user_status,
-                                          False)
-            else:
-                row_data = examine_device(user_folder, user_id, devices, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema,
-                                          False)
-            user_data.append(row_data)
+                user_data.append(examine_device("main", user_folder, user_id, devices, user_joined, user_left, days_in_study, user_status, False))
+                if "deviceid_ema" in user_file:
+                    user_data.append(examine_device("ema", user_folder, user_id, user_file["deviceid_ema"], user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, True))
+            elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
+                user_data.append(examine_device("ema", user_folder, user_id, devices, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False))
+                if "deviceid" in user_file:
+                    user_data.append(examine_device("main", user_folder, user_id, user_file["deviceid"], user_joined, user_left, days_in_study, user_status, True))
+        else:
+            for devices in os.listdir(user_folder):
+                if "deviceid" in user_file and devices == user_file["deviceid"]:
+                    user_data.append(examine_device("main", user_folder, user_id, devices, user_joined, user_left, days_in_study, user_status, False))
+                elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
+                    user_data.append(examine_device("ema", user_folder, user_id, devices, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False))
     else:
         if "deviceid" in user_file:
-            row_data = examine_device(user_folder, user_id, user_file["deviceid"], user_joined, user_left, days_in_study,
+            row_data = examine_device("main", user_folder, user_id, user_file["deviceid"], user_joined, user_left, days_in_study,
                                       user_status, True)
             user_data.append(row_data)
-        elif "deviceid_ema" in user_file:
-            row_data = examine_device(user_folder, user_id, user_file["deviceid_ema"], user_joined_ema, user_left_ema, days_in_study_ema,
+        if "deviceid_ema" in user_file:
+            row_data = examine_device("ema", user_folder, user_id, user_file["deviceid_ema"], user_joined_ema, user_left_ema, days_in_study_ema,
                                       user_status_ema, True)
             user_data.append(row_data)
     return user_data
 
 
-def examine_device(user_folder, users, devices, user_joined, user_left, days_in_study, user_status, new_user):
+def examine_device(app_desc, user_folder, users, devices, user_joined, user_left, days_in_study, user_status, new_user):
     if new_user:
-        device_data = {"subject_name": users, "device_id": devices,
+        device_data = {"app": app_desc, "subject_name": users, "device_id": devices,
                        "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"), "date_left_study": "none",
                        "time_in_study": str(days_in_study) + " days", "status_code": user_status}
     else:
         device_folder = user_folder + '/' + devices
         if user_left == 0.0:
-            device_data = {"subject_name": users, "device_id": devices,
+            device_data = {"app": app_desc, "subject_name": users, "device_id": devices,
                            "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"), "date_left_study": "none",
                            "time_in_study": str(days_in_study) + " days", "status_code": user_status}
         else:
-            device_data = {"subject_name": users, "device_id": devices,
+            device_data = {"app": app_desc, "subject_name": users, "device_id": devices,
                            "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"),
                            "date_left_study": datetime.fromtimestamp(user_left).strftime("%Y-%m-%d %H:%M:%S"),
                            "time_in_study": str(days_in_study) + " days", "status_code": user_status}
@@ -263,7 +271,7 @@ def write_csv(study_id, csv_data):
                      sensor_names[7] + " n_batches", sensor_names[7] + " last_time_received",
                      sensor_names[8] + " n_batches", sensor_names[8] + " last_time_received",
                      sensor_names[9] + " n_batches", sensor_names[9] + " last_time_received",
-                     sensor_names[10] + " n_batches", sensor_names[10] + " last_time_received"]
+                     sensor_names[10] + " n_batches", sensor_names[10] + " last_time_received", "app"]
 
         writer.writerow(data_keys)
         for row_number in range(len(csv_data)):
@@ -282,7 +290,7 @@ def write_csv(study_id, csv_data):
                              check_key(data_keys[20], csv_row), check_key(data_keys[21], csv_row),
                              check_key(data_keys[22], csv_row), check_key(data_keys[23], csv_row),
                              check_key(data_keys[24], csv_row), check_key(data_keys[25], csv_row),
-                             check_key(data_keys[26], csv_row), check_key(data_keys[27], csv_row)])
+                             check_key(data_keys[26], csv_row), check_key(data_keys[27], csv_row),  check_key(data_keys[28], csv_row)])
 
     if os.path.isfile(storage_folder + '/jutrack_dashboard_' + study_id + '.csv'):
         os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)
