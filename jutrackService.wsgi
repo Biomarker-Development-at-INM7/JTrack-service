@@ -24,7 +24,8 @@ valid_data = [
     'magnetic_sensor',
     'rotation_vector',
     'linear_acceleration',
-    'ema'
+    'ema',
+    'active_labeling'
 ]
 
 storage_folder = '/mnt/jutrack_data'
