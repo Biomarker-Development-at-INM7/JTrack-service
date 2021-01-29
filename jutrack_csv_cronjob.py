@@ -51,17 +51,33 @@ def examine_user(study_folder, users):
     user_joined_ema = time.time()
 
     if "time_joined" in user_file:
-        user_joined = user_file["time_joined"] / 1000.0
+        if isinstance(user_file["time_joined"], str):
+            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+                log_file.write("Different time_format: " + users_folder + "/" + users + " - " + user_file["time_joined"] + "\n")
+        else:
+            user_joined = user_file["time_joined"] / 1000.0
     if "time_joined_ema" in user_file:
-        user_joined_ema = user_file["time_joined_ema"] / 1000.0
+        if isinstance(user_file["time_joined_ema"], str):
+            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+                log_file.write("Different time_format: " + users_folder + "/" + users + " - " +  user_file["time_joined_ema"] + "\n")
+        else:
+            user_joined_ema = user_file["time_joined_ema"] / 1000.0
 
     user_left = 0.0
     user_left_ema = 0.0
 
     if "time_left" in user_file:
-        user_left = user_file["time_left"] / 1000.0
+        if isinstance(user_file["time_left"], str):
+            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+                log_file.write("Different time_format: " + users_folder + "/" + users + " - " + user_file["time_left"] + "\n")
+        else:
+            user_left = user_file["time_left"] / 1000.0
     if "time_left_ema" in user_file:
-        user_left_ema = user_file["time_left_ema"] / 1000.0
+        if isinstance(user_file["time_left_ema"], str):
+            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+                log_file.write("Different time_format: " + users_folder + "/" + users + " - " + user_file["time_left_ema"] + "\n")
+        else:
+            user_left_ema = user_file["time_left_ema"] / 1000.0
 
     if user_left == 0.0:
         time_in_study = time.time() - user_joined
