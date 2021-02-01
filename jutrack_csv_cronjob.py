@@ -7,6 +7,7 @@ import json
 import pwd
 import grp
 import os
+import sys
 import numpy as np
 
 uid = pwd.getpwnam("www-data").pw_uid
@@ -347,6 +348,11 @@ def invoke_csv_for_all_studys():
 
 
 if __name__ == "__main__":
-    invoke_csv_for_all_studys()
-    with open("/mnt/jutrack_data/jutrack_csv.log", "w") as log_file:
-        log_file.write("Cron last successful on: " + str(datetime.now()) + "\n")
+    try:
+        invoke_csv_for_all_studys()
+        with open("/mnt/jutrack_data/jutrack_csv.log", "w") as log_file:
+            log_file.write("Cron last successful on: " + str(datetime.now()) + "\n")
+    except Exception as e:
+        with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            log_file.write("An error occured during CSV creation at " + str(datetime.now()) + ":\n")
+            log_file.write(sys.exc_info()[0])
