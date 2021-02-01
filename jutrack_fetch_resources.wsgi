@@ -65,39 +65,45 @@ def application(environ, start_response):
     status = "200 OK"
     # We only accept POST-requests
     if environ['REQUEST_METHOD'] == 'POST':
-        # read request body
-        try:
-            request_body = environ['wsgi.input'].read()
+        if 'HTTP_ACTION' in environ:
+                action = environ['HTTP_ACTION']
+            # read request body
+            try:
+                request_body = environ['wsgi.input'].read()
 
-            # read passed MD5 value
-            if 'HTTP_MD5' in environ:
-                md5 = environ['HTTP_MD5']
-            else:
-                md5 = environ['HTTP_CONTENT-MD5']
+                # read passed MD5 value
+                if 'HTTP_MD5' in environ:
+                    md5 = environ['HTTP_MD5']
+                else:
+                    md5 = environ['HTTP_CONTENT-MD5']
 
-            # calc_md5 = hashlib.md5(request_body).hexdigest()
-            calc_md5 = hashlib.md5()
-            calc_md5.update(request_body)
+                # calc_md5 = hashlib.md5(request_body).hexdigest()
+                calc_md5 = hashlib.md5()
+                calc_md5.update(request_body)
 
-            # Check MD5 and content. If both is good perform actions
-            if is_md5_matching(md5, calc_md5.hexdigest()):
-                try:
-                    data = is_valid_json(request_body, 0)
-                    study_id = data["study_id"]
-                    file_name = study_id
-                    is_valid_study(study_id)
-                    file_path = get_images(study_id)
-                except JutrackValidationError as e:
-                    status = '409 Conflict'
-                    output = {"message": e.message}
+                # Check MD5 and content. If both is good perform actions
+                if is_md5_matching(md5, calc_md5.hexdigest()):
+                    try:
+                        data = is_valid_json(request_body, 0)
+                        if action == "download":
+                            study_id = data["study_id"]
+                            file_name = study_id
+                            is_valid_study(study_id)
+                            file_path = get_images(study_id)
+                    except JutrackValidationError as e:
+                        status = '409 Conflict'
+                        output = {"message": e.message}
 
-            else:
-                print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
-                status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
-                output = {"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
-        except ValueError:
-            status = '500 Internal Server Error: ValueError occured during JSON parsing!'
-            output = {"message": "The wsgi service was not able to parse the json content."}
+                else:
+                    print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
+                    status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
+                    output = {"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
+            except ValueError:
+                status = '500 Internal Server Error: ValueError occured during JSON parsing!'
+                output = {"message": "The wsgi service was not able to parse the json content."}
+        else:
+            status = '500 Internal Server Error: There has been a KEY MISSING!'
+            output = {"message": "MISSING-KEY: There was no action-attribute defined, upload aborted!"}
     else:
         status = '500 Internal Server Error: Wrong request type!'
         output = {"message": "Expected POST-request!"}

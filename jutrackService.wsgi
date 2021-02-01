@@ -207,6 +207,11 @@ def is_valid_sensor(sensorname):
         raise JutrackValidationError("Unaccepted sensorname detected: " + str(sensorname))
 
 
+def is_valid_userdata(data):
+    if not ('studyId' in data and 'username' in data and 'status' in data):
+        raise JutrackValidationError("ERROR: The uploaded json does not include the required user content to update the user.")
+
+
 # ----------------------------------------PREPARATION------------------------------------------------
 
 
@@ -233,6 +238,8 @@ def perform_action(action, data):
 
         return 'SUCCESS: User successfully added'
     elif action == "update_user":
+        is_valid_user_data(data):
+
         if "status_ema" in data:
             output_file = update_ema(data)
         else:
