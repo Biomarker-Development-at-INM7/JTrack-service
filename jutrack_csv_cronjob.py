@@ -125,8 +125,13 @@ def examine_user(study_folder, users):
 
 def examine_device(app_desc, user_folder, users, devices, user_joined, user_left, days_in_study, user_status, new_user):
     if new_user:
+        if user_left == 0.0:
+            date_left = "none"
+        else:
+            date_left = datetime.fromtimestamp(user_left).strftime("%Y-%m-%d %H:%M:%S")
+
         device_data = {"app": app_desc, "subject_name": users, "device_id": devices,
-                       "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"), "date_left_study": "none",
+                       "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"), "date_left_study": date_left,
                        "time_in_study": str(days_in_study) + " days", "status_code": user_status}
     else:
         device_folder = user_folder + '/' + devices
@@ -353,6 +358,6 @@ if __name__ == "__main__":
         with open("/mnt/jutrack_data/jutrack_csv.log", "w") as log_file:
             log_file.write("Cron last successful on: " + str(datetime.now()) + "\n")
     except Exception as e:
-        with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+        with open("/mnt/jutrack_data/jutrack_csv.log", "w") as log_file:
             log_file.write("An error occured during CSV creation at " + str(datetime.now()) + ":\n")
             log_file.write(sys.exc_info()[0])

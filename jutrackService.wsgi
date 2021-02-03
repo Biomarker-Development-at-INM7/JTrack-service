@@ -238,7 +238,7 @@ def perform_action(action, data):
 
         return 'SUCCESS: User successfully added'
     elif action == "update_user":
-        is_valid_user_data(data):
+        is_valid_userdata(data)
 
         if "status_ema" in data:
             output_file = update_ema(data)
