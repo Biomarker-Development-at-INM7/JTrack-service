@@ -89,7 +89,10 @@ def is_valid_data(body, action, verbose=0):
 
     study_id = data[0]['studyId']
     user_id = data[0]['username']
-    device_id = data[0]['deviceid']
+    if 'deviceid' in data[0]:
+        device_id = data[0]['deviceid']
+    elif 'deviceid_ema' in data[0]:
+        device_id = data[0]['deviceid_ema']
 
     is_valid_study(study_id, data)
 
@@ -124,8 +127,15 @@ def is_valid_study(study_id, data):
 
         study_id = data[0]['studyId']
         user_id = data[0]['username']
-        device_id = data[0]['deviceid']
-        data_name = data[0]['sensorname']
+
+        if 'deviceid' in data[0]:
+            device_id = data[0]['deviceid']
+        elif 'deviceid_ema' in data[0]:
+            device_id = data[0]['deviceid_ema']
+
+        data_name = "no_sensor"
+        if 'sensorname' in data[0]:
+            data_name = data[0]['sensorname']
 
         if study_id.strip() == "":
             study_id = "nonameStudy"
@@ -208,7 +218,7 @@ def is_valid_sensor(sensorname):
 
 
 def is_valid_userdata(data):
-    if not ('studyId' in data and 'username' in data and 'status' in data):
+    if not ('studyId' in data and 'username' in data and ('status' in data or 'status_ema' in data)):
         raise JutrackValidationError("ERROR: The uploaded json does not include the required user content to update the user.")
 
 
