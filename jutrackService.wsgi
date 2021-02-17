@@ -228,6 +228,11 @@ def is_valid_userdata(data):
 # ----------------------------------------PREPARATION------------------------------------------------
 
 
+def chgrp(filepath, gid):
+    uid = os.stat(filepath).st_uid
+    os.chown(filepath, uid, gid)
+
+
 # Based on passed action term perform the action
 def perform_action(action, data):
     if action == "write_data":
@@ -318,9 +323,8 @@ def write_file(filename, data):
 
     with open(target_file, 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-    os.chmod(target_file, 0o666)
-    #os.chown(target_file, uid, gid)
-    #os.chmod(target_file, 0o664)
+    os.chmod(target_file, 0o664)
+    chgrp(target_file, gid)
 
     return target_file
 
@@ -398,9 +402,8 @@ def add_user(data):
         if ('status_ema' in data and 'survey' in study_data) or ('status' in data and 'frequency' in study_data):
             with open(target_file, 'w') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
-            os.chmod(target_file, 0o666)
-            #os.chown(target_file, uid, gid)
-            #os.chmod(target_file, 0o664)
+            os.chmod(target_file, 0o664)
+            chgrp(target_file, gid)
         else:
             write_output_message("(ERROR)User " + str(user_id) +
                                  " can not be added to study " + str(
@@ -521,8 +524,8 @@ def write_output_message(message):
         with open(file_name, 'w+') as f:
             f.write(date + '\n' + timestamp + ', ' + message + '\n')
 
-        os.chmod(file_name, 0o666)
-        # os.chown(file_name, s_uid, gid)
+        os.chmod(file_name, 0o664)
+        chgrp(file_name, gid)
     else:
         with open(file_name, 'r') as f:
             first_line = f.readline().strip()
