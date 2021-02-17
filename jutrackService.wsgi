@@ -228,9 +228,9 @@ def is_valid_userdata(data):
 # ----------------------------------------PREPARATION------------------------------------------------
 
 
-def chgrp(filepath, gid):
-    uid = os.stat(filepath).st_uid
-    os.chown(filepath, uid, gid)
+def chgrp(filepath, group_id):
+    user_id = os.stat(filepath).st_uid
+    os.chown(filepath, user_id, group_id)
 
 
 # Based on passed action term perform the action
