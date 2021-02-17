@@ -89,6 +89,7 @@ def is_valid_data(body, action, verbose=0):
 
     study_id = data[0]['studyId']
     user_id = data[0]['username']
+    device_id = ""
     if 'deviceid' in data[0]:
         device_id = data[0]['deviceid']
     elif 'deviceid_ema' in data[0]:
@@ -112,7 +113,7 @@ def is_valid_json(body, verbose):
         data = json.loads(body)
         if verbose:
             print("NOTICE: The uploaded content is valid json.")
-    except Exception as e:
+    except Exception:
         raise JutrackValidationError("ERROR: The uploaded content is not valid json.")
 
     return data
@@ -127,7 +128,7 @@ def is_valid_study(study_id, data):
 
         study_id = data[0]['studyId']
         user_id = data[0]['username']
-
+        device_id = ""
         if 'deviceid' in data[0]:
             device_id = data[0]['deviceid']
         elif 'deviceid_ema' in data[0]:
@@ -144,7 +145,8 @@ def is_valid_study(study_id, data):
         if device_id.strip() == "":
             device_id = "nodevice"
 
-        filename = junk_folder + "/" + study_id + '/' + study_id + '_' + user_id + '_' + device_id + '_' + data_name + '_' + timestamp
+        filename = junk_folder + "/" + study_id + '/' + study_id + '_' + user_id + '_' + device_id + '_' \
+            + data_name + '_' + timestamp
         data_folder = junk_folder + "/" + study_id
         if not os.path.isdir(data_folder):
             os.makedirs(data_folder)
@@ -219,7 +221,8 @@ def is_valid_sensor(sensorname):
 
 def is_valid_userdata(data):
     if not ('studyId' in data and 'username' in data and ('status' in data or 'status_ema' in data)):
-        raise JutrackValidationError("ERROR: The uploaded json does not include the required user content to update the user.")
+        raise JutrackValidationError("ERROR: The uploaded json does not include "
+                                     "the required user content to update the user.")
 
 
 # ----------------------------------------PREPARATION------------------------------------------------
@@ -514,7 +517,6 @@ def write_output_message(message):
 
 # This method is called by the main endpoint
 def application(environ, start_response):
-    output = {}
     status = "200 OK"
     # We only accept POST-requests
     if environ['REQUEST_METHOD'] == 'POST':
@@ -555,8 +557,9 @@ def application(environ, start_response):
 
                 # else:
                 print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
-                #    status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
-                #    output = {"message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
+                # status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
+                # output = {"message": "MD5-MISMATCH: There has been a mismatch between
+                # the uploaded data and the received data, upload aborted!"}
             except ValueError:
                 status = '500 Internal Server Error: ValueError occured during JSON parsing!'
                 output = {"message": "The wsgi service was not able to parse the json content."}
