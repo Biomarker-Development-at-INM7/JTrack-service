@@ -86,9 +86,9 @@ def examine_user(study_folder, users):
         time_in_study = user_left - user_joined
 
     if user_left_ema == 0.0:
-       time_in_study_ema = time.time() - user_joined_ema
+        time_in_study_ema = time.time() - user_joined_ema
     else:
-       time_in_study_ema = user_left_ema - user_joined_ema
+        time_in_study_ema = user_left_ema - user_joined_ema
 
     days_in_study = int(time_in_study / 86400.0)
     days_in_study_ema = int(time_in_study_ema / 86400.0)
