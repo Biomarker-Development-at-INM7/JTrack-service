@@ -489,14 +489,16 @@ def update_ema(data):
 
 
 def get_remaining_days_in_study(study_id, user_id, app_type):
-    iteration = user_id.split("_")[-1]
-    user = user_id.split("_")[:-1]
+    iteration = int(user_id.split("_")[-1])
+    user = '_'.join(user_id.split("_")[:-1])
+    print(user)
 
     study_json = studies_folder + '/' + study_id + '/' + study_id + '.json'
     with open(study_json) as s:
         study_data = json.load(s)
 
-    total_duration = study_data["duration"]
+    total_duration = int(study_data["duration"])
+    print("Total duration:" + str(total_duration))
 
     if iteration == 1:
         return total_duration
@@ -505,10 +507,11 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
         with open(user_json) as s:
             user_data = json.load(s)
         if app_type == "ema":
-            return total_duration - int((user_data["time_left_ema"] / 1000.0 -
-                                         user_data["time_joined_ema"] / 1000.0) / 86400.0)
+            remaining_duration = total_duration - int((user_data["time_left_ema"] / 1000.0 - user_data["time_joined_ema"] / 1000.0) / 86400.0)
         else:
-            return total_duration - int((user_data["time_left"] / 1000.0 - user_data["time_joined"] / 1000.0) / 86400.0)
+            remaining_duration = total_duration - int((user_data["time_left"] / 1000.0 - user_data["time_joined"] / 1000.0) / 86400.0)
+        print("Remaining: " + str(remaining_duration))
+        return remaining_duration
 
 
 # write daily error summary

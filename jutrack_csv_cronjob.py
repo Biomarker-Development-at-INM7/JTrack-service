@@ -11,7 +11,7 @@ import sys
 import numpy as np
 
 uid = pwd.getpwnam("www-data").pw_uid
-gid = grp.getgrnam("jutrack").gr_gid
+gid = grp.getgrnam("jtrack").gr_gid
 
 # -------------------- CONFIGURATION -----------------------
 storage_folder = '/mnt/jutrack_data'
