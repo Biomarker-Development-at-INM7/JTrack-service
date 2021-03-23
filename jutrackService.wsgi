@@ -7,7 +7,6 @@ import sys
 import time
 import smtplib
 import pwd
-import grp
 
 # ---------------------------------------CONFIGURATION
 # server version
@@ -359,6 +358,7 @@ def add_user(data):
     if "applicationType" in data:
         app_type = data['applicationType']
     data["study_duration"] = get_remaining_days_in_study(study_id, user_id, app_type)
+    data["active_labeling"] = get_active_labeling(study_id)
     # check for folder and create if a (sub-)folder does not exist
     if not os.path.isdir(user_folder):
         os.makedirs(user_folder)
@@ -478,7 +478,7 @@ def update_ema(data):
         user_data['time_left_ema'] = data['time_left_ema']
     elif status_ema == 3 or status_ema == 2:
         user_data['time_left_ema'] = int(time.time() * 1000.0)
-    elif status == 0:
+    elif status_ema == 0:
         user_data['time_left_ema'] = ''
 
     # Write to file and return the file name for logging
@@ -512,6 +512,16 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
             remaining_duration = total_duration - int((user_data["time_left"] / 1000.0 - user_data["time_joined"] / 1000.0) / 86400.0)
         print("Remaining: " + str(remaining_duration))
         return remaining_duration
+
+
+def get_active_labeling(study_id):
+    study_json = studies_folder + '/' + study_id + '/' + study_id + '.json'
+    with open(study_json) as s:
+        study_data = json.load(s)
+    if "active_labeling" in study_data:
+        return study_data["active_labeling"]
+    else:
+        return 0
 
 
 # write daily error summary
