@@ -36,7 +36,7 @@ content = {}
 
 uid = pwd.getpwnam("www-data").pw_uid
 s_uid = pwd.getpwnam("jfischer").pw_uid
-gid = grp.getgrnam("jutrack").gr_gid
+gid = 3619
 
 # ----------------------------------------VALIDATION-------------------------------------------------
 
