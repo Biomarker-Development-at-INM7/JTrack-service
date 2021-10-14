@@ -29,6 +29,7 @@ class JutrackValidationError(JutrackError):
 
 
 def is_valid_json(body, verbose):
+    print(body)
     try:
         data = json.loads(body)
         if verbose:
@@ -145,33 +146,22 @@ def application(environ, start_response):
             # read request body
             try:
                 request_body = environ['wsgi.input'].read()
-                # read passed MD5 value
-                if 'HTTP_MD5' in environ:
-                    md5 = environ['HTTP_MD5']
-                else:
-                    md5 = environ['HTTP_CONTENT-MD5']
-
-                # calc_md5 = hashlib.md5(request_body).hexdigest()
-                calc_md5 = hashlib.md5()
-                calc_md5.update(to_utf8(request_body).encode())
-
-                # Check MD5 and content. If both is good perform actions
-                #if is_md5_matching(md5, calc_md5.hexdigest()):
                 try:
-                    json_str = to_utf8(request_body)
-                    json_text = '{"' + json_str.split('=')[0] + '": "' + json_str.split('=')[1]+'"}'
-                    print(json_text)
-                    data = is_valid_json(json_text, 0)
+                    #json_str = to_utf8(request_body)
+                    # print(json_str)
+                    # json_text = '{"' + json_str.split('=')[0] + '": "' + json_str.split('=')[1]+'"}'
+                    #data = is_valid_json(json_str, 0)
+                    filename = environ['HTTP_FILENAME']
 
                     if "download_image" == action:
-                        output = download_image(data['filename'])
+                        output = download_image(filename)
                     elif "download_audio" == action:
-                        output = download_audio(data['filename'])
+                        output = download_audio(filename)
                     elif "download_zip" == action:
                         arch_type = environ['HTTP_ARCHIVE']
-                        output = download_zip(data['filename'], arch_type)
+                        output = download_zip(filename, arch_type)
                     elif "download_other" == action:
-                        output = download_other(data['filename'])
+                        output = download_other(filename)
                     else:
                         status = '409 Conflict'
                         output = {"message": "Wrong action provided"}
@@ -179,11 +169,6 @@ def application(environ, start_response):
                     status = '409 Conflict'
                     output = {"message": e.message}
 
-                #else:
-                print('expected MD5: ' + str(calc_md5.hexdigest()) + ', received MD5: ' + str(md5))
-                    #status = '500 Internal Server Error: There has been an MD5-MISMATCH!'
-                    #output = {
-                    #    "message": "MD5-MISMATCH: There has been a mismatch between the uploaded data and the received data, upload aborted!"}
             except ValueError:
                 status = '500 Internal Server Error: ValueError occured during JSON parsing!'
                 output = {"message": "The wsgi service was not able to parse the json content."}

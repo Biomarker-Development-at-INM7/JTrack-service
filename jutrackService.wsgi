@@ -506,10 +506,14 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
         user_json = user_folder + '/' + study_id + '_' + user + '_' + str(iteration-1) + '.json'
         with open(user_json) as s:
             user_data = json.load(s)
-        if app_type == "ema":
+
+        if app_type == "ema" and "time_left_ema" in user_data:
             remaining_duration = total_duration - int((user_data["time_left_ema"] / 1000.0 - user_data["time_joined_ema"] / 1000.0) / 86400.0)
-        else:
+        elif app_type != "ema" and "time_left" in user_data:
             remaining_duration = total_duration - int((user_data["time_left"] / 1000.0 - user_data["time_joined"] / 1000.0) / 86400.0)
+        else:
+            remaining_duration = total_duration
+
         print("Remaining: " + str(remaining_duration))
         return remaining_duration
 
@@ -551,7 +555,7 @@ def write_output_message(message):
                              {}
                              """.format("\n".join(f.readlines()))
             sender = 'www-data@jutrack.inm7.de'
-            receivers = ['j.fischer@fz-juelich.de', 'michael.stolz@alumni.fh-aachen.de', 'mehran.sahandi@yahoo.com']
+            receivers = ['j.fischer@fz-juelich.de', 'j.dukart@fz-juelich.de', 'mehran.sahandi@yahoo.com']
             send_mail(sender, receivers, "JuTrack Daily Error Report", mail_text)
             with open(file_name, 'w') as f:
                 f.write(date + '\n' + timestamp + ', ' + message + '\n')
