@@ -24,7 +24,8 @@ valid_data = [
     'rotation_vector',
     'linear_acceleration',
     'ema',
-    'active_labeling'
+    'active_labeling',
+    'lockUnlock'
 ]
 
 storage_folder = '/mnt/jutrack_data'
@@ -99,11 +100,11 @@ def is_valid_data(body, action, verbose=0):
     if action == "write_data":
         sensorname = data[0]['sensorname']
         is_valid_user(study_id, user_id, sensorname)
-        is_valid_device(study_id, user_id, device_id)
+        data = is_valid_device(study_id, user_id, device_id, data)
         is_valid_sensor(sensorname)
     else:
         is_valid_user(study_id, user_id, "")
-        is_valid_device(study_id, user_id, device_id)
+        data = is_valid_device(study_id, user_id, device_id, data)
     return data
 
 
@@ -180,7 +181,7 @@ def is_valid_user(study_id, username, sensorname):
 
         if sensorname == "ema":
             if 'status_ema' in user_data and user_data['status_ema'] == 2:
-                left_day = int((time.time() - user_data["time_left_ema"] / 1000.0) / 86400.0)
+                left_day = int((time.time() - int(user_data["time_left_ema"]) / 1000.0) / 86400.0)
                 if left_day > 1:
                     # alert via mail
                     write_output_message("(Left user) Following user_id tried to send data but already left ema: "
@@ -190,7 +191,7 @@ def is_valid_user(study_id, username, sensorname):
 
         else:
             if 'status' in user_data and user_data['status'] == 2:
-                left_day = int((time.time() - user_data["time_left"] / 1000.0) / 86400.0)
+                left_day = int((time.time() - int(user_data["time_left"]) / 1000.0) / 86400.0)
                 if left_day > 1:
                     # alert via mail
                     write_output_message("(Left user) Following user_id tried to send data but already left the study: "
@@ -199,15 +200,17 @@ def is_valid_user(study_id, username, sensorname):
                     raise JutrackLeftUserError("User " + str(username) + " already left study: " + study_id)
 
 
-def is_valid_device(study_id, user_id, device_id):
+def is_valid_device(study_id, user_id, device_id, data):
     with open(user_folder + "/" + study_id + "_" + user_id + '.json') as f:
         user_data = json.load(f)
     if not ("deviceid" in user_data and user_data["deviceid"] == device_id) and not (
             "deviceid_ema" in user_data and user_data["deviceid_ema"] == device_id):
         # alert via mail
+        data["deviceid_lastSend"] = device_id
         write_output_message("(Unknown device) Following deviceID tried to send data for user " + str(user_id) + ": "
                              + str(device_id))
-        raise JutrackValidationError("Unaccepted deviceID for user" + str(user_id) + ": " + str(device_id))
+        print(device_id + " not recognized.")
+    return data
 
 
 def is_valid_sensor(sensorname):
@@ -357,7 +360,9 @@ def add_user(data):
     app_type = ""
     if "applicationType" in data:
         app_type = data['applicationType']
-    data["study_duration"] = get_remaining_days_in_study(study_id, user_id, app_type)
+    data["study_duration"], data["initial_join"] = get_remaining_days_in_study(study_id, user_id, app_type)
+    # data["study_duration"] = res[0]
+    # data["initial_join"] = res[1]
     data["active_labeling"] = get_active_labeling(study_id)
     # check for folder and create if a (sub-)folder does not exist
     if not os.path.isdir(user_folder):
@@ -381,6 +386,8 @@ def add_user(data):
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
+            user_data["time_joined_ema"] = int(user_data["time_joined_ema"])
+            user_data["time_left_ema"] = int(user_data["time_left_ema"])
             with open(target_file, 'w') as f:
                 json.dump(user_data, f, ensure_ascii=False, indent=4)
             return "EMA registered, " + target_file + " written to disc."
@@ -388,18 +395,23 @@ def add_user(data):
             for key in data:
                 if key not in user_data:
                     user_data[key] = data[key]
+            user_data["time_joined"] = int(user_data["time_joined"])
+            user_data["time_left"] = int(user_data["time_left"])
             with open(target_file, 'w') as f:
                 json.dump(user_data, f, ensure_ascii=False, indent=4)
             return "Main App registered, " + target_file + " written to disc."
         else:
             # alert via mail
             write_output_message("(ERROR)Insufficient status value given for user " + str(user_id) +
-                                 " in study " + str(study_id) + ", user could not be added to use the app!")
+                                 " in study " + str(study_id) + ", user could not be added to use the app!\n"+json.dumps(data))
             raise JutrackValidationError("Unaccepted status value detected")
     else:
         with open(study_json) as s:
             study_data = json.load(s)
         if ('status_ema' in data and 'survey' in study_data) or ('status' in data and 'frequency' in study_data):
+            if 'status_ema' in data:
+                data["time_joined_ema"] = int(data["time_joined_ema"])
+                data["time_left_ema"] = int(data["time_left_ema"])
             with open(target_file, 'w') as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
             os.chmod(target_file, 0o664)
@@ -442,7 +454,7 @@ def update_user(data):
     # append status and if status is left from client or unknown add time_left for study leave
     user_data['status'] = status
     if status == 1:
-        user_data['time_left'] = data['time_left']
+        user_data['time_left'] = int(data['time_left'])
     elif status == 3 or status == 2:
         user_data['time_left'] = int(time.time() * 1000.0)
     elif status == 0:
@@ -474,8 +486,10 @@ def update_ema(data):
 
     # append status and if status is left from client or unknown add time_left for study leave
     user_data['status_ema'] = status_ema
+    user_data['time_joined_ema'] = int(user_data['time_joined_ema'])
+
     if status_ema == 1:
-        user_data['time_left_ema'] = data['time_left_ema']
+        user_data['time_left_ema'] = int(data['time_left_ema'])
     elif status_ema == 3 or status_ema == 2:
         user_data['time_left_ema'] = int(time.time() * 1000.0)
     elif status_ema == 0:
@@ -501,21 +515,30 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
     print("Total duration:" + str(total_duration))
 
     if iteration == 1:
-        return total_duration
+        return total_duration, 0
     else:
         user_json = user_folder + '/' + study_id + '_' + user + '_' + str(iteration-1) + '.json'
         with open(user_json) as s:
             user_data = json.load(s)
 
         if app_type == "ema" and "time_left_ema" in user_data:
-            remaining_duration = total_duration - int((user_data["time_left_ema"] / 1000.0 - user_data["time_joined_ema"] / 1000.0) / 86400.0)
+            remaining_duration = total_duration - int((int(user_data["time_left_ema"]) / 1000.0 - int(user_data["time_joined_ema"]) / 1000.0) / 86400.0)
         elif app_type != "ema" and "time_left" in user_data:
-            remaining_duration = total_duration - int((user_data["time_left"] / 1000.0 - user_data["time_joined"] / 1000.0) / 86400.0)
+            remaining_duration = total_duration - int((int(user_data["time_left"]) / 1000.0 - int(user_data["time_joined"]) / 1000.0) / 86400.0)
         else:
             remaining_duration = total_duration
 
         print("Remaining: " + str(remaining_duration))
-        return remaining_duration
+        if os.path.isfile(user_folder + '/' + study_id + '_' + user + '_1.json'):
+            user_json = user_folder + '/' + study_id + '_' + user + '_1.json'
+            with open(user_json) as s:
+                user_data = json.load(s)
+            if app_type == "ema":
+                return remaining_duration, user_data["time_joined_ema"]
+            else:
+                return remaining_duration, user_data["time_joined"]
+        else:
+            return remaining_duration, 0
 
 
 def get_active_labeling(study_id):
@@ -644,6 +667,8 @@ def application(environ, start_response):
                 output['study_duration'] = study_content['duration']
             if 'survey' in study_content:
                 output['survey'] = study_content['survey']
+            if 'survey_ios' in study_content:
+                output['survey_ios'] = study_content['survey_ios']
         else:
             output = data[0]
 
