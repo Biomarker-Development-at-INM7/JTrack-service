@@ -227,6 +227,28 @@ def is_valid_userdata(data):
                                      "the required user content to update the user.")
 
 
+def is_valid_admin(data):
+    study_id = data["studyId"]
+    username = data["username"]
+    if not os.path.isfile(studies_folder + "/" + study_id + "/" + study_id + ".json"):
+        # alert via mail
+        write_output_message("(Invalid study_id) request from admin  ")
+
+        raise JutrackValidationError(
+            "Invalid request for study " + study_id + " detected: "
+        )
+
+    if not username == "inm7":
+        # alert via mail
+        write_output_message(
+            "(Invalid admin user) Following user tried to access study: " + username
+        )
+
+        raise JutrackValidationError(
+            "Invalid admin user  request for" + study_id + " detected: " + str(username)
+        )
+
+
 # ----------------------------------------PREPARATION------------------------------------------------
 
 
@@ -270,6 +292,16 @@ def perform_action(action, data):
             print(output_file + " written to disc.")
 
         return 'SUCCESS: User successfully updated'
+
+    elif action == "admin_user":
+        is_valid_admin(data)
+        output_file = admin_user(data)
+        if not bool(output_file):
+            print('No study JSON found!')
+        else:
+            print("Study JSON successfully retrieved.")
+
+        return output_file
 
 
 # add uploaded files in folders according to BIDS format
@@ -351,6 +383,15 @@ def exec_file(data):
     return write_file(file_name, data)
 
 
+def admin_user(data):
+    study_id = data['studyId']
+    study_json = {}
+    target_file = studies_folder + '/' + study_id + '/' + study_id + '.json'
+    with open(target_file) as f:
+        study_json = json.load(f)
+    return study_json
+
+
 # stores user data (no personal data) in a new file
 def add_user(data):
     study_id = data['studyId']
@@ -422,10 +463,12 @@ def add_user(data):
                 study_id) + ", the study is not eligible to use this application type!")
             raise JutrackValidationError("Unaccepted status value detected")
         # add user to enrolled subjects
-        if user_id in study_data['enrolled-subjects']:
+        if ('enrolled_subjects' in study_data and user_id in study_data['enrolled_subjects']) or ('enrolled-subjects' in study_data and user_id in study_data['enrolled-subjects']):
             return "user is already enrolled"
-
-        study_data['enrolled-subjects'].append(user_id)
+        if 'enrolled_subjects' in study_data:
+            study_data['enrolled_subjects'].append(user_id)
+        else:
+            study_data['enrolled-subjects'].append(user_id)
         # Write to file and return the file name for logging
         with open(study_json, 'w') as s:
             json.dump(study_data, s, ensure_ascii=False, indent=4)
@@ -614,12 +657,15 @@ def application(environ, start_response):
                 try:
                     data = is_valid_data(request_body, action, 0)
                     output = perform_action(action, data)
-                    if output == "user exists":
-                        status = '422 Existing Data Error'
-                        output = {"message": "DATA-ERROR: The user you tried to add already exists!"}
-                    elif output == "user already enrolled":
-                        status = '422 Existing Data Error'
-                        output = {"message": "DATA-ERROR: The user you tried to enroll has already been enrolled!"}
+                    if action == "admin_user":
+                        data = output
+                    else:
+                        if output == "user exists":
+                            status = '422 Existing Data Error'
+                            output = {"message": "DATA-ERROR: The user you tried to add already exists!"}
+                        elif output == "user already enrolled":
+                            status = '422 Existing Data Error'
+                            output = {"message": "DATA-ERROR: The user you tried to enroll has already been enrolled!"}
                 except JutrackValidationError as e:
                     status = '409 Conflict'
                     output = {"message": e.message}
@@ -652,6 +698,8 @@ def application(environ, start_response):
                 study_content = json.load(json_file)
             if 'sensor-list' in study_content:
                 output['sensors'] = study_content['sensor-list']
+            if 'sensor_list' in study_content:
+                output['sensors'] = study_content['sensor_list']
             if 'duration' in study_content:
                 output['study_duration'] = study_content['duration']
             if 'frequency' in study_content:
@@ -663,12 +711,16 @@ def application(environ, start_response):
                 study_content = json.load(json_file)
             if 'sensor-list' in study_content:
                 output['sensors'] = study_content['sensor-list']
+            if 'sensor_list' in study_content:
+                output['sensors'] = study_content['sensor_list']
             if 'duration' in study_content:
                 output['study_duration'] = study_content['duration']
             if 'survey' in study_content:
                 output['survey'] = study_content['survey']
             if 'survey_ios' in study_content:
                 output['survey_ios'] = study_content['survey_ios']
+            if 'images' in study_content:
+                output['images'] = study_content['images']
         else:
             output = data[0]
 
