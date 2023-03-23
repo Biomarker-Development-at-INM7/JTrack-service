@@ -203,7 +203,7 @@ def get_old_sensor_info(path):
     for row in range(1, len(csv_content)):
         row_content = csv_content[row]
 
-        if len(row_content) < 29:
+        if len(row_content) < 31:
             with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write("ERROR: " + path + " is not working " + str(len(row_content)) + "\n")
         else:
@@ -425,4 +425,4 @@ if __name__ == "__main__":
     except Exception as e:
         with open("/mnt/jutrack_data/jutrack_csv.log", "w") as log_file:
             log_file.write("An error occured during CSV creation at " + str(datetime.now()) + ":\n")
-            log_file.write(str(sys.exc_info()[0]))
+            log_file.write(str(sys.exc_info()))
