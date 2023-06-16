@@ -700,6 +700,8 @@ def application(environ, start_response):
                 output['sensors'] = study_content['sensor-list']
             if 'sensor_list' in study_content:
                 output['sensors'] = study_content['sensor_list']
+            if 'task_list' in study_content:
+                output['task_list'] = study_content['task_list']
             if 'duration' in study_content:
                 output['study_duration'] = study_content['duration']
             if 'frequency' in study_content:
@@ -713,6 +715,8 @@ def application(environ, start_response):
                 output['sensors'] = study_content['sensor-list']
             if 'sensor_list' in study_content:
                 output['sensors'] = study_content['sensor_list']
+            if 'task_list' in study_content:
+                output['task_list'] = study_content['task_list']
             if 'duration' in study_content:
                 output['study_duration'] = study_content['duration']
             if 'survey' in study_content:

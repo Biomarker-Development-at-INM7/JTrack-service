@@ -84,9 +84,9 @@ def upload_audio(data, filename):
 def upload_zip(data, dest, filename, arch_type):
     file = base64.b64decode(data)
     if arch_type == "audio":
-        if not os.path.isdir(resources_folder+"/upload/audio/"+dest):
-            os.makedirs(resources_folder+"/upload/audio/"+dest)
-        file_path = resources_folder+"/upload/audio/"+dest+filename
+        if not os.path.isdir(studies_folder+"/"+dest):
+            os.makedirs(studies_folder+"/"+dest)
+        file_path = studies_folder+"/"+dest+filename
     else:
         if not os.path.isdir(resources_folder+"/upload/audio/"+dest):
             os.makedirs(resources_folder+"/upload/audio/"+dest)
