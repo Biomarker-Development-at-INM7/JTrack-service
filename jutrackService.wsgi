@@ -389,6 +389,8 @@ def admin_user(data):
     target_file = studies_folder + '/' + study_id + '/' + study_id + '.json'
     with open(target_file) as f:
         study_json = json.load(f)
+    os.chmod(target_file, 0o775)
+    chgrp(target_file, gid)
     return study_json
 
 
@@ -423,6 +425,8 @@ def add_user(data):
 
         if 'status_ema' in user_data and 'status' in user_data:
             return "user exists"
+        elif 'status' in user_data and 'status' in data:
+            return "user is already enrolled"
         elif 'status_ema' not in user_data and 'status_ema' in data and 'survey' in study_data:
             for key in data:
                 if key not in user_data:
@@ -464,17 +468,29 @@ def add_user(data):
             raise JutrackValidationError("Unaccepted status value detected")
         # add user to enrolled subjects
         if ('enrolled_subjects' in study_data and user_id in study_data['enrolled_subjects']) or ('enrolled-subjects' in study_data and user_id in study_data['enrolled-subjects']):
-            return "user is already enrolled"
+            print("tmp")#"user is already enrolled"
         if 'enrolled_subjects' in study_data:
             study_data['enrolled_subjects'].append(user_id)
+            study_data['number_of_enrolled_subjects'] = calc_enrolled(study_data['enrolled_subjects'])
         else:
             study_data['enrolled-subjects'].append(user_id)
+            study_data['number_of_enrolled_subjects'] = calc_enrolled(study_data['enrolled_subjects'])
         # Write to file and return the file name for logging
         with open(study_json, 'w') as s:
             json.dump(study_data, s, ensure_ascii=False, indent=4)
-
+        os.chmod(study_json, 0o775)
+        chgrp(study_json, gid)
         return target_file
 
+# calculate the number_of_enrolled_subjects
+def calc_enrolled(list_enrolled):
+    res = 0
+    for qr_id in list_enrolled:
+        if qr_id.endswith("_1"):
+            res = res + 1
+        else:
+            continue
+    return res
 
 # update an already existent user. If the user is somehow not found, add him
 def update_user(data):
@@ -565,9 +581,15 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
             user_data = json.load(s)
 
         if app_type == "ema" and "time_left_ema" in user_data:
-            remaining_duration = total_duration - int((int(user_data["time_left_ema"]) / 1000.0 - int(user_data["time_joined_ema"]) / 1000.0) / 86400.0)
+            if int(user_data["time_left_ema"]) == 0:
+                remaining_duration = total_duration - 1
+            else:
+                remaining_duration = total_duration - int((int(user_data["time_left_ema"]) / 1000.0 - int(user_data["time_joined_ema"]) / 1000.0) / 86400.0)
         elif app_type != "ema" and "time_left" in user_data:
-            remaining_duration = total_duration - int((int(user_data["time_left"]) / 1000.0 - int(user_data["time_joined"]) / 1000.0) / 86400.0)
+            if int(user_data["time_left"]) == 0:
+                remaining_duration = total_duration - 1
+            else:
+                remaining_duration = total_duration - int((int(user_data["time_left"]) / 1000.0 - int(user_data["time_joined"]) / 1000.0) / 86400.0)
         else:
             remaining_duration = total_duration
 
@@ -662,12 +684,13 @@ def application(environ, start_response):
                     else:
                         if output == "user exists":
                             status = '422 Existing Data Error'
-                            output = {"message": "DATA-ERROR: The user you tried to add already exists!"}
+                            output = {"message": "The user you tried to add already exists!"}
                         elif output == "user already enrolled":
                             status = '422 Existing Data Error'
-                            output = {"message": "DATA-ERROR: The user you tried to enroll has already been enrolled!"}
+                            output = {"message": "The user you tried to enroll has already been enrolled!"}
                 except JutrackValidationError as e:
                     status = '409 Conflict'
+                    print(e.message)
                     output = {"message": e.message}
                 except JutrackLeftUserError as e:
                     status = '403 Forbidden'
@@ -702,6 +725,8 @@ def application(environ, start_response):
                 output['sensors'] = study_content['sensor_list']
             if 'task_list' in study_content:
                 output['task_list'] = study_content['task_list']
+            if 'sensor_list_limited' in study_content:
+                output['sensor_list_limited'] = study_content['sensor_list_limited']
             if 'duration' in study_content:
                 output['study_duration'] = study_content['duration']
             if 'frequency' in study_content:
@@ -717,6 +742,8 @@ def application(environ, start_response):
                 output['sensors'] = study_content['sensor_list']
             if 'task_list' in study_content:
                 output['task_list'] = study_content['task_list']
+            if 'sensor_list_limited' in study_content:
+                output['sensor_list_limited'] = study_content['sensor_list_limited']
             if 'duration' in study_content:
                 output['study_duration'] = study_content['duration']
             if 'survey' in study_content:

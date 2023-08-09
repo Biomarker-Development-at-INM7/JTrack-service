@@ -22,7 +22,8 @@ users_folder = storage_folder + '/users'
 devices_folder = ""
 
 sensor_names = ['accelerometer', 'activity', 'application_usage', 'barometer', 'gravity_sensor', 'gyroscope',
-                'location', 'magnetic_sensor', 'rotation_vector', 'linear_acceleration', 'ema', 'lockUnlock']
+                'location', 'magnetic_sensor', 'rotation_vector',
+                'linear_acceleration', 'ema', 'lockUnlock', 'voice']
 
 
 def prepare_csv(study_id):
@@ -186,7 +187,12 @@ def examine_device(app_desc, user_folder, users, devices, user_joined, user_left
             if 'T' in timestamp:
                 date_send = timestamp.split('T')[0]
                 time_send = timestamp.split('T')[1]
+                if len(date_send.split('-')) == 3 and len(date_send.split('-')[0]) == 2:
+                    res = date_send.split('-')[2] + "-" + date_send.split('-')[1] + "-" + date_send.split('-')[0]
+                    date_send = res
                 timestamp = date_send + " " + time_send.replace('-', ':')
+            else:
+                timestamp = datetime.fromtimestamp(int(timestamp) / 1000).strftime('%Y-%m-%d %H:%M:%S')
             #  print(timestamp)
             device_data[sensors + " n_batches"] = number_of_files
             device_data[sensors + " last_time_received"] = timestamp
@@ -219,6 +225,7 @@ def get_old_sensor_info(path):
                    sensor_names[9] + " n_batches": row_content[24],
                    sensor_names[10] + " n_batches": row_content[26],
                    sensor_names[11] + " n_batches": row_content[28],
+                   sensor_names[12] + " n_batches": row_content[30],
                    sensor_names[0] + " last_time_received": row_content[7],
                    sensor_names[1] + " last_time_received": row_content[9],
                    sensor_names[2] + " last_time_received": row_content[11],
@@ -230,7 +237,8 @@ def get_old_sensor_info(path):
                    sensor_names[8] + " last_time_received": row_content[23],
                    sensor_names[9] + " last_time_received": row_content[25],
                    sensor_names[10] + " last_time_received": row_content[27],
-                   sensor_names[11] + " last_time_received": row_content[29]}
+                   sensor_names[11] + " last_time_received": row_content[29],
+                   sensor_names[12] + " last_time_received": row_content[31]}
             old_res[row_content[0]] = tmp
 
     return old_res
@@ -260,10 +268,8 @@ def overwrite_csv_nbatches(study_id, csv_row, old_content):
     if old_content is not None and csv_row["subject_name"] in old_content:
         csv_row[sensor_names[0] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"],
                                                                          csv_row["device_id"], sensor_names[0],
-                                                                         old_content[csv_row["subject_name"]][
-                                                                             sensor_names[0] + " last_time_received"],
-                                                                         old_content[csv_row["subject_name"]][
-                                                                             sensor_names[0] + " n_batches"])
+                                                                         old_content[csv_row["subject_name"]][sensor_names[0] + " last_time_received"],
+                                                                         old_content[csv_row["subject_name"]][sensor_names[0] + " n_batches"])
         csv_row[sensor_names[1] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"],
                                                                          csv_row["device_id"], sensor_names[1],
                                                                          old_content[csv_row["subject_name"]][
@@ -330,6 +336,12 @@ def overwrite_csv_nbatches(study_id, csv_row, old_content):
                                                                               sensor_names[11] + " last_time_received"],
                                                                           old_content[csv_row["subject_name"]][
                                                                               sensor_names[11] + " n_batches"])
+        csv_row[sensor_names[12] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"],
+                                                                          csv_row["device_id"], sensor_names[12],
+                                                                          old_content[csv_row["subject_name"]][
+                                                                              sensor_names[12] + " last_time_received"],
+                                                                           old_content[csv_row["subject_name"]][
+                                                                              sensor_names[12] + " n_batches"])
 
     return csv_row
 
@@ -354,7 +366,8 @@ def write_csv(study_id, csv_data):
                      sensor_names[8] + " n_batches", sensor_names[8] + " last_time_received",
                      sensor_names[9] + " n_batches", sensor_names[9] + " last_time_received",
                      sensor_names[10] + " n_batches", sensor_names[10] + " last_time_received",
-                     sensor_names[11] + " n_batches", sensor_names[11] + " last_time_received", "app"]
+                     sensor_names[11] + " n_batches", sensor_names[11] + " last_time_received",
+                     sensor_names[12] + " n_batches", sensor_names[12] + " last_time_received", "app"]
 
         writer.writerow(data_keys)
         for row_number in range(len(csv_data)):
@@ -375,7 +388,8 @@ def write_csv(study_id, csv_data):
                              check_key(data_keys[24], csv_row), check_key(data_keys[25], csv_row),
                              check_key(data_keys[26], csv_row), check_key(data_keys[27], csv_row),
                              check_key(data_keys[28], csv_row), check_key(data_keys[29], csv_row),
-                             check_key(data_keys[30], csv_row)])
+                             check_key(data_keys[30], csv_row), check_key(data_keys[31], csv_row),
+                             check_key(data_keys[32], csv_row)])
 
     if os.path.isfile(storage_folder + '/jutrack_dashboard_' + study_id + '.csv'):
         os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)
