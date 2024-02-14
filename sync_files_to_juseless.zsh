@@ -130,6 +130,8 @@ function make_directories_for_user_folder(){
     #copy_upload_folder_user_folder(study_folder,source_users_folder)
 }
 
+python3 /var/www/jdash.inm7.de/service/inventorize_jtrack.py
+
 cd "${SOURCE_BASE_PATH}${studies_directory}"
 studies=($(ls -1r))
 for study in ${studies}
@@ -137,15 +139,20 @@ do
     if containsDir ${discard_directories} ${study}; then
         continue
     else
+        is_test=0
         cd "${SOURCE_BASE_PATH}${studies_directory}${study}"
         input="${study}.json"
         while IFS= read -r line
         do
             if [[ "$line" == *"is_test"* ]] && [[ "$line" == *"true"* ]]; then
                 echo "Skipping Study ${study}: It is a test-study!"
+                is_test=1
                 continue
             fi
         done < "$input"
+        if [[ ${is_test} == 1 ]]; then
+            continue
+        fi
     fi
     echo ${study} # LOGGING
     cd "${SOURCE_BASE_PATH}${studies_directory}${study}"
@@ -160,9 +167,9 @@ do
             rsync -O --checksum ${user} "${rsync_remote}${study}/${metadata_folder}"
             continue
         fi
-
+        echo ${user}
         unique_user=${user:0:-2}
-        #echo ${unique_user} # LOGGING
+        echo ${unique_user} # LOGGING
         make_directories_for_user_folder ${study} ${user}
         cd "${SOURCE_BASE_PATH}${studies_directory}${study}"
     done
@@ -184,6 +191,5 @@ done
 cd ~
 echo $(date -u) "Executing datalad script on juseless ..."
 ssh jfischer@juseless.inm7.de "/data/project/JTrack/Scripts/datalad_inventorize.zsh > /data/project/JTrack/Scripts/datalad_cron.log"
-rsync -t jfischer@juseless.inm7.de:/data/project/JTrack/Scripts/study_inv.json /var/www/jutrack.inm7.de/service/
-chmod 755 /var/www/jutrack.inm7.de/service/study_inv.json
-chgrp jtrack /var/www/jutrack.inm7.de/service/study_inv.json
+chmod 755 /var/www/jdash.inm7.de/service/folder_info.json
+chgrp jtrack /var/www/jdash.inm7.de/service/folder_info.json

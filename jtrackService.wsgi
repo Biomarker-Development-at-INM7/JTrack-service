@@ -358,8 +358,9 @@ def write_file(filename, data):
                          + " will be created.\r\n")
         target_file = filename + '_' + str(counter) + '.json'
         counter += 1
-
-    with open(target_file, 'w') as f:
+    # if data[0]["sensorname"] == "application_usage":
+    #     sys.stderr.write(''.join(str(x) for x in data))
+    with open(target_file, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
     os.chmod(target_file, 0o664)
     chgrp(target_file, gid)
