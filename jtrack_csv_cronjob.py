@@ -33,13 +33,13 @@ def prepare_csv(study_id):
 
     for users in os.listdir(users_folder):
         if not users.startswith('.') and users.endswith('.json') and users.startswith(study_id):
-            user_data = examine_user(study_folder, users)
+            user_data = examine_user(study_folder, study_id, users)
             csv_data = csv_data + user_data
 
     write_csv(study_id, csv_data)
 
 
-def examine_user(study_folder, users):
+def examine_user(study_folder, study_id, users):
     user_data = []
     user_file = get_json_content(users_folder + "/" + users)
     user_id = user_file["username"]
@@ -110,44 +110,44 @@ def examine_user(study_folder, users):
             devices = os.listdir(user_folder)[0]
             if "deviceid" in user_file and devices == user_file["deviceid"]:
                 user_data.append(
-                    examine_device("main", user_folder, user_id, devices, user_joined, user_left, days_in_study,
+                    examine_device("main", user_folder, study_id, user_id, devices, user_joined, user_left, days_in_study,
                                    user_status, False))
                 if "deviceid_ema" in user_file:
                     user_data.append(
-                        examine_device("ema", user_folder, user_id, user_file["deviceid_ema"], user_joined_ema,
+                        examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_joined_ema,
                                        user_left_ema, days_in_study_ema, user_status_ema, True))
             elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
-                user_data.append(examine_device("ema", user_folder, user_id, devices, user_joined_ema, user_left_ema,
+                user_data.append(examine_device("ema", user_folder, study_id, user_id, devices, user_joined_ema, user_left_ema,
                                                 days_in_study_ema, user_status_ema, False))
                 if "deviceid" in user_file:
                     user_data.append(
-                        examine_device("main", user_folder, user_id, user_file["deviceid"], user_joined, user_left,
+                        examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_joined, user_left,
                                        days_in_study, user_status, True))
         else:
             for devices in os.listdir(user_folder):
                 if "deviceid" in user_file and devices == user_file["deviceid"]:
                     user_data.append(
-                        examine_device("main", user_folder, user_id, devices, user_joined, user_left, days_in_study,
+                        examine_device("main", user_folder, study_id, user_id, devices, user_joined, user_left, days_in_study,
                                        user_status, False))
                 elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
                     user_data.append(
-                        examine_device("ema", user_folder, user_id, devices, user_joined_ema, user_left_ema,
+                        examine_device("ema", user_folder, study_id, user_id, devices, user_joined_ema, user_left_ema,
                                        days_in_study_ema, user_status_ema, False))
     else:
         if "deviceid" in user_file:
-            row_data = examine_device("main", user_folder, user_id, user_file["deviceid"], user_joined, user_left,
+            row_data = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_joined, user_left,
                                       days_in_study,
                                       user_status, True)
             user_data.append(row_data)
         if "deviceid_ema" in user_file:
-            row_data = examine_device("ema", user_folder, user_id, user_file["deviceid_ema"], user_joined_ema,
+            row_data = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_joined_ema,
                                       user_left_ema, days_in_study_ema,
                                       user_status_ema, True)
             user_data.append(row_data)
     return user_data
 
 
-def examine_device(app_desc, user_folder, users, devices, user_joined, user_left, days_in_study, user_status, new_user):
+def examine_device(app_desc, user_folder, studyid, users, devices, user_joined, user_left, days_in_study, user_status, new_user):
     if new_user:
         if user_left == 0.0:
             date_left = "none"
@@ -171,34 +171,48 @@ def examine_device(app_desc, user_folder, users, devices, user_joined, user_left
                            "date_left_study": datetime.fromtimestamp(user_left).strftime("%Y-%m-%d %H:%M:%S"),
                            "time_in_study": str(days_in_study) + " days", "status_code": user_status}
 
+        transferred_dict = get_json_content("/var/www/jdash.inm7.de/service/folder_info.json")
+
         for sensors in os.listdir(device_folder):
             sensor_folder = device_folder + '/' + sensors
             sensor_files = get_files_in_folder(sensor_folder)
             number_of_files = len(sensor_files)
+            timestamp = "none"
+
+            if studyid+"/"+users+"/"+devices+"/"+sensors in transferred_dict:
+                number_of_files += transferred_dict[studyid+"/"+users+"/"+devices+"/"+sensors]["number_of_files"]
+                if "last_file_received" in transferred_dict[studyid+"/"+users+"/"+devices+"/"+sensors]:
+                    timestamp = transferred_dict[studyid+"/"+users+"/"+devices+"/"+sensors]["last_file_received"]
+
             if number_of_files == 0:
                 device_data[sensors + " n_batches"] = number_of_files
-                device_data[sensors + " last_time_received"] = None
+                device_data[sensors + " last_time_received"] = "none"
                 continue
 
-            file_name = sensor_files[number_of_files - 1]
-            timestamp = file_name.split('_')[len(file_name.split('_')) - 1].split('.')[0]
-            if len(timestamp) == 1:
-                timestamp = file_name.split('_')[len(file_name.split('_')) - 2]
-            elif len(timestamp) == 6:
-                file_parts = file_name.split('_')
-                date_send = file_parts[len(file_parts) - 4]
-                timestamp = date_send + "-" + file_parts[len(file_parts) - 3] + "-" + file_parts[len(file_parts) - 2]
-            if 'T' in timestamp:
-                date_send = timestamp.split('T')[0]
-                time_send = timestamp.split('T')[1]
-                if len(date_send.split('-')) == 3 and len(date_send.split('-')[0]) == 2:
-                    res = date_send.split('-')[2] + "-" + date_send.split('-')[1] + "-" + date_send.split('-')[0]
-                    date_send = res
-                timestamp = date_send + " " + time_send.replace('-', ':')
-            else:
-                timestamp = datetime.fromtimestamp(int(timestamp) / 1000).strftime('%Y-%m-%d %H:%M:%S')
+            if len(sensor_files) > 0:
+                file_name = sensor_files[len(sensor_files) - 1]
+                timestamp = file_name.split('_')[len(file_name.split('_')) - 1].split('.')[0]
+                if len(timestamp) == 1:
+                    timestamp = file_name.split('_')[len(file_name.split('_')) - 2]
+                elif len(timestamp) == 6:
+                    file_parts = file_name.split('_')
+                    date_send = file_parts[len(file_parts) - 4]
+                    timestamp = date_send + "-" + file_parts[len(file_parts) - 3] + "-" + file_parts[len(file_parts) - 2]
+                if 'T' in timestamp:
+                    date_send = timestamp.split('T')[0]
+                    time_send = timestamp.split('T')[1]
+                    if len(date_send.split('-')) == 3 and len(date_send.split('-')[0]) == 2:
+                        res = date_send.split('-')[2] + "-" + date_send.split('-')[1] + "-" + date_send.split('-')[0]
+                        date_send = res
+                    timestamp = date_send + " " + time_send.replace('-', ':')
+                else:
+                    timestamp = datetime.fromtimestamp(int(timestamp) / 1000).strftime('%Y-%m-%d %H:%M:%S')
             #  print(timestamp)
+            # with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            #     log_file.write(str(timestamp)+"\n")
             device_data[sensors + " n_batches"] = number_of_files
+            if timestamp == "":
+                timestamp = None
             device_data[sensors + " last_time_received"] = timestamp
 
     return device_data
@@ -376,7 +390,7 @@ def write_csv(study_id, csv_data):
         writer.writerow(data_keys)
         for row_number in range(len(csv_data)):
             csv_row = csv_data[row_number]
-            csv_row = overwrite_csv_nbatches(study_id, csv_row, old_sensor_info)
+            # csv_row = overwrite_csv_nbatches(study_id, csv_row, old_sensor_info)
             writer.writerow([check_key(data_keys[0], csv_row), check_key(data_keys[1], csv_row),
                              check_key(data_keys[2], csv_row), check_key(data_keys[3], csv_row),
                              check_key(data_keys[4], csv_row), check_key(data_keys[5], csv_row),

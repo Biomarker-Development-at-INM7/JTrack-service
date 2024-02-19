@@ -79,9 +79,9 @@ function copy_directories_of_sensor_folders(){
 
     if ! containsDir ${discard_directories} ${sensor[0]}; then
         ssh jfischer@juseless.inm7.de "mkdir -p ${BASE_PATH}${study}/${input_folder}/${unique_user}/${raw_folder}${sensor}"
-        echo ${study} ${user} ${device_id} ${sensor} # LOGGING
+        #echo ${study} ${user} ${device_id} ${sensor} # LOGGING
         sensor_files=($(ls -1r "${SOURCE_BASE_PATH}${studies_directory}${study}/${user}/${device_id}/${sensor}"))
-        rsync -rO --progress --checksum "${SOURCE_BASE_PATH}${studies_directory}${study}/${user}/${device_id}/${sensor}/" "${rsync_remote}${study}/${input_folder}${unique_user}/${raw_folder}${sensor}"
+        rsync -rO --remove-source-files --progress --checksum "${SOURCE_BASE_PATH}${studies_directory}${study}/${user}/${device_id}/${sensor}/" "${rsync_remote}${study}/${input_folder}${unique_user}/${raw_folder}${sensor}"
     fi
 }
 
@@ -167,9 +167,9 @@ do
             rsync -O --checksum ${user} "${rsync_remote}${study}/${metadata_folder}"
             continue
         fi
-        echo ${user}
+        #echo ${user}
         unique_user=${user:0:-2}
-        echo ${unique_user} # LOGGING
+        #echo ${unique_user} # LOGGING
         make_directories_for_user_folder ${study} ${user}
         cd "${SOURCE_BASE_PATH}${studies_directory}${study}"
     done
