@@ -6,7 +6,7 @@ from io import BytesIO
 import base64
 import pwd
 
-storage_folder = '/mnt/jutrack_data'
+storage_folder = '/mnt/jtrack_data'
 studies_folder = storage_folder + '/studies'
 junk_folder = storage_folder + '/junk'
 resources_folder = storage_folder + '/image_resources'

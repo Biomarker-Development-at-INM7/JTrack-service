@@ -23,7 +23,7 @@ devices_folder = ""
 
 sensor_names = ['accelerometer', 'activity', 'application_usage', 'barometer', 'gravity_sensor', 'gyroscope',
                 'location', 'magnetic_sensor', 'rotation_vector',
-                'linear_acceleration', 'ema', 'lockUnlock', 'voice']
+                'linear_acceleration', 'ema', 'lockUnlock', 'voice', 'pedometer']
 
 
 def prepare_csv(study_id):
@@ -32,7 +32,7 @@ def prepare_csv(study_id):
     csv_data = []
 
     for users in os.listdir(users_folder):
-        if not users.startswith('.') and users.endswith('.json') and users.startswith(study_id):
+        if not users.startswith('.') and users.endswith('.json') and users.startswith(study_id + "_" + study_id + "_"):
             user_data = examine_user(study_folder, study_id, users)
             csv_data = csv_data + user_data
 
@@ -177,6 +177,9 @@ def examine_device(app_desc, user_folder, studyid, users, devices, user_joined, 
             sensor_folder = device_folder + '/' + sensors
             sensor_files = get_files_in_folder(sensor_folder)
             number_of_files = len(sensor_files)
+            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+                log_file.write(str(users)+"\n")
+                log_file.write(str(number_of_files)+"\n")
             timestamp = "none"
 
             if studyid+"/"+users+"/"+devices+"/"+sensors in transferred_dict:
@@ -210,11 +213,13 @@ def examine_device(app_desc, user_folder, studyid, users, devices, user_joined, 
             #  print(timestamp)
             # with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
             #     log_file.write(str(timestamp)+"\n")
+            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+                log_file.write(str(number_of_files)+"\n")
             device_data[sensors + " n_batches"] = number_of_files
             if timestamp == "":
                 timestamp = None
             device_data[sensors + " last_time_received"] = timestamp
-
+    device_data["device_id"] = device_data["device_id"] if device_data["device_id"] else "none"
     return device_data
 
 
@@ -244,6 +249,7 @@ def get_old_sensor_info(path):
                    sensor_names[10] + " n_batches": row_content[26],
                    sensor_names[11] + " n_batches": row_content[28],
                    sensor_names[12] + " n_batches": row_content[30],
+                   sensor_names[13] + " n_batches": row_content[32],
                    sensor_names[0] + " last_time_received": row_content[7],
                    sensor_names[1] + " last_time_received": row_content[9],
                    sensor_names[2] + " last_time_received": row_content[11],
@@ -256,7 +262,8 @@ def get_old_sensor_info(path):
                    sensor_names[9] + " last_time_received": row_content[25],
                    sensor_names[10] + " last_time_received": row_content[27],
                    sensor_names[11] + " last_time_received": row_content[29],
-                   sensor_names[12] + " last_time_received": 0 if len(row_content) < 32 else row_content[31]}
+                   sensor_names[12] + " last_time_received": row_content[31],
+                   sensor_names[13] + " last_time_received": 0 if len(row_content) < 34 else row_content[33]}
             old_res[row_content[0]] = tmp
 
     return old_res
@@ -360,7 +367,12 @@ def overwrite_csv_nbatches(study_id, csv_row, old_content):
                                                                               sensor_names[12] + " last_time_received"],
                                                                            old_content[csv_row["subject_name"]][
                                                                               sensor_names[12] + " n_batches"])
-
+        csv_row[sensor_names[13] + " n_batches"] = count_new_sensor_files(study_id, csv_row["subject_name"],
+                                                                          csv_row["device_id"], sensor_names[13],
+                                                                          old_content[csv_row["subject_name"]][
+                                                                              sensor_names[13] + " last_time_received"],
+                                                                           old_content[csv_row["subject_name"]][
+                                                                              sensor_names[13] + " n_batches"])
     return csv_row
 
 
@@ -385,7 +397,8 @@ def write_csv(study_id, csv_data):
                      sensor_names[9] + " n_batches", sensor_names[9] + " last_time_received",
                      sensor_names[10] + " n_batches", sensor_names[10] + " last_time_received",
                      sensor_names[11] + " n_batches", sensor_names[11] + " last_time_received",
-                     sensor_names[12] + " n_batches", sensor_names[12] + " last_time_received", "app"]
+                     sensor_names[12] + " n_batches", sensor_names[12] + " last_time_received",
+                     sensor_names[13] + " n_batches", sensor_names[13] + " last_time_received", "app"]
 
         writer.writerow(data_keys)
         for row_number in range(len(csv_data)):
@@ -407,7 +420,8 @@ def write_csv(study_id, csv_data):
                              check_key(data_keys[26], csv_row), check_key(data_keys[27], csv_row),
                              check_key(data_keys[28], csv_row), check_key(data_keys[29], csv_row),
                              check_key(data_keys[30], csv_row), check_key(data_keys[31], csv_row),
-                             check_key(data_keys[32], csv_row)])
+                             check_key(data_keys[32], csv_row), check_key(data_keys[33], csv_row),
+                             check_key(data_keys[34], csv_row)])
 
     if os.path.isfile(storage_folder + '/jutrack_dashboard_' + study_id + '.csv'):
         os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)

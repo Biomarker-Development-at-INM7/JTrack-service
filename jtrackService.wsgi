@@ -25,7 +25,11 @@ valid_data = [
     'linear_acceleration',
     'ema',
     'active_labeling',
-    'lockUnlock'
+    'lockUnlock',
+    'movement_derived',
+    'pedometer',
+    'fitbit',
+    'garmin'
 ]
 
 storage_folder = '/mnt/jutrack_data'
@@ -172,7 +176,7 @@ def is_valid_study(study_id, data):
 def is_valid_user(study_id, username, sensorname):
     if not os.path.isfile(user_folder + "/" + study_id + "_" + username + '.json'):
         # alert via mail
-        write_output_message("(Invalid user) Following user_id tried to send data: " + username)
+        write_output_message("(Invalid user) Following user_id tried to send data: " + username + " (Details: studyID | " + study_id + ", sensorname | " + sensorname + ")")
 
         raise JutrackValidationError("Invalid user for study " + study_id + " detected: " + str(username))
     else:
@@ -411,6 +415,10 @@ def add_user(data):
     data["study_duration"], data["initial_join"] = get_remaining_days_in_study(study_id, user_id, app_type)
     # data["study_duration"] = res[0]
     # data["initial_join"] = res[1]
+    if data["study_duration"] < 0:
+        write_output_message("(ERROR)Insufficient study duration " + str(data["study_duration"]) + " for user " + str(user_id) +
+                             " in study " + str(study_id) + ", user could not be added to use the app!\n"+json.dumps(data))
+        raise JutrackValidationError("Exceeded study duration detected")
     data["active_labeling"] = get_active_labeling(study_id)
     # check for folder and create if a (sub-)folder does not exist
     if not os.path.isdir(user_folder):
@@ -442,6 +450,11 @@ def add_user(data):
             with open(target_file, 'w', encoding='utf8') as f:
                 json.dump(user_data, f, ensure_ascii=False, indent=4)
             return "EMA registered, " + target_file + " written to disc."
+        elif 'status_ema' not in user_data and 'status_ema' in data and 'survey' not in study_data:
+            # alert via mail
+            write_output_message("(ERROR)Survey value is not defined for user " + str(user_id) +
+                                 " in study " + str(study_id) + ", user could not be added to use the app!\n"+json.dumps(data))
+            raise JutrackValidationError("Survey value is not defined for this study, no registration for EMA app is possible.")
         elif 'status' not in user_data and 'status' in data and 'frequency' in study_data:
             for key in data:
                 if key not in user_data:
@@ -451,8 +464,18 @@ def add_user(data):
             with open(target_file, 'w', encoding='utf8') as f:
                 json.dump(user_data, f, ensure_ascii=False, indent=4)
             return "Main App registered, " + target_file + " written to disc."
+        elif 'status' not in user_data and 'status' in data and 'frequency' not in study_data:
+            # alert via mail
+            write_output_message("(ERROR)Frequency value is not defined for user " + str(user_id) +
+                                 " in study " + str(study_id) + ", user could not be added to use the app!\n"+json.dumps(data))
+            raise JutrackValidationError("Frequency value is not defined for this study, no registration for Social app is possible.")
+        elif 'status' not in user_data and 'status' not in data:
+            write_output_message("(ERROR)Second request has been performed simulateously with a successful one. " + str(user_id) +
+                                 " in study " + str(study_id) + ", user could not be added to use the app!\n"+json.dumps(data))
+            raise JutrackValidationError("Registration already happened through a simultaneous request, no registration for Social app is possible.")
         else:
             # alert via mail
+            # write_output_message(json.dumps(user_data))
             write_output_message("(ERROR)Insufficient status value given for user " + str(user_id) +
                                  " in study " + str(study_id) + ", user could not be added to use the app!\n"+json.dumps(data))
             raise JutrackValidationError("Unaccepted status value detected")
@@ -605,9 +628,15 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
             with open(user_json, encoding='utf-8') as s:
                 user_data = json.load(s)
             if app_type == "ema":
-                return remaining_duration, user_data["time_joined_ema"]
+                if "time_joined_ema" not in user_data:
+                    return total_duration, user_data["time_joined"]
+                else:
+                    return remaining_duration, user_data["time_joined_ema"]
             else:
-                return remaining_duration, user_data["time_joined"]
+                if "time_joined" not in user_data:
+                    return total_duration, user_data["time_joined_ema"]
+                else:
+                    return remaining_duration, user_data["time_joined"]
         else:
             return remaining_duration, 0
 
@@ -629,7 +658,7 @@ def write_output_message(message):
     date = i.strftime("%Y-%m-%d")
     timestamp = i.strftime("%Y-%m-%dT%H-%M-%S")
 
-    file_name = "/var/www/jutrack.inm7.de/service/daily_mail.txt"
+    file_name = "/var/www/jdash.inm7.de/service/daily_mail.txt"
     # write first line
     if not os.path.isfile(file_name):
         with open(file_name, 'w+') as f:
@@ -650,7 +679,7 @@ def write_output_message(message):
                              """.format("\n".join(f.readlines()))
             sender = 'www-data@jutrack.inm7.de'
             receivers = ['j.fischer@fz-juelich.de', 'j.dukart@fz-juelich.de', 'mehran.sahandi@yahoo.com']
-            send_mail(sender, receivers, "JuTrack Daily Error Report", mail_text)
+            send_mail(sender, receivers, "JTrack Daily Error Report", mail_text)
             with open(file_name, 'w') as f:
                 f.write(date + '\n' + timestamp + ', ' + message + '\n')
 
@@ -671,8 +700,6 @@ def application(environ, start_response):
             # read request body
             try:
                 request_body = environ['wsgi.input'].read()
-                print("Body:")
-                print(request_body)
                 # read passed MD5 value
                 if 'HTTP_MD5' in environ:
                     md5 = environ['HTTP_MD5']
@@ -691,8 +718,6 @@ def application(environ, start_response):
                     if action == "admin_user":
                         data = output
                     else:
-                        print(action)
-                        print(output)
                         if output == "user exists":
                             status = '422 Existing Data Error'
                             output = {"message": "The user you tried to add already exists!"}
@@ -750,9 +775,13 @@ def application(environ, start_response):
                 output['freq'] = study_content['frequency']
         elif 'status_ema' in data:
             output = data
+            print(data['studyId'])
             study_json = studies_folder + '/' + data['studyId'] + '/' + data['studyId'] + '.json'
             with open(study_json, encoding='utf-8') as json_file:
                 study_content = json.load(json_file)
+            if 'survey' in study_content and 'questions' in study_content['survey']:
+                num_questions = len(study_content['survey']['questions'])
+                print(f"Number of questions: {num_questions}")
             if 'sensor-list' in study_content:
                 output['sensors'] = study_content['sensor-list']
             if 'sensor_list' in study_content:
@@ -763,6 +792,8 @@ def application(environ, start_response):
                 output['sensor_list_limited'] = study_content['sensor_list_limited']
             if 'duration' in study_content:
                 output['study_duration'] = study_content['duration']
+            if 'version' in study_content:
+                output['version'] = study_content['version']
             if 'survey' in study_content:
                 output['survey'] = study_content['survey']
             if 'survey_ios' in study_content:

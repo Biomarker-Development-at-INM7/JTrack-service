@@ -188,8 +188,8 @@ do
 done
 
 # Update Datalad
-cd ~
-echo $(date -u) "Executing datalad script on juseless ..."
-ssh jfischer@juseless.inm7.de "/data/project/JTrack/Scripts/datalad_inventorize.zsh > /data/project/JTrack/Scripts/datalad_cron.log"
+#cd ~
+#echo $(date -u) "Executing datalad script on juseless ..."
+#ssh jfischer@juseless.inm7.de "/data/project/JTrack/Scripts/datalad_inventorize.zsh > /data/project/JTrack/Scripts/datalad_cron.log"
 chmod 755 /var/www/jdash.inm7.de/service/folder_info.json
 chgrp jtrack /var/www/jdash.inm7.de/service/folder_info.json
