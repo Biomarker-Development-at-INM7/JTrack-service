@@ -293,7 +293,7 @@ def perform_action(action, data):
         if "status_ema" in data:
             output_file = update_ema(data)
         else:
-            output_file = update_user(data)
+            output_file = prepare_leave_social(data)
         if output_file == "":
             print('No changes made')
         else:
@@ -310,6 +310,33 @@ def perform_action(action, data):
             print("Study JSON successfully retrieved.")
 
         return output_file
+
+    elif action == "verify_leave":
+        is_valid_userdata(data)
+
+        if "status_ema" in data:
+            output_file = update_ema(data)
+        else:
+            output_file = update_user(data)
+        if output_file == "":
+            print('No changes made')
+        else:
+            print(output_file + " written to disc.")
+
+    elif action == "get_study_version":
+        is_valid_userdata(data)
+
+        study_id = data['studyId']
+        file_name = studies_folder + '/' + study_id + '/' + study_id + '.json'
+
+        if os.path.isfile(file_name):
+            with open(file_name, encoding='utf-8') as f:
+                study_data = json.load(f)
+            if 'version' in study_data:
+                return { "study_version": study_data['version'] }
+            else:
+                return { "study_version": 1 }
+        return { "study_version": 0 }
 
 
 # add uploaded files in folders according to BIDS format
@@ -521,6 +548,40 @@ def calc_enrolled(list_enrolled):
         else:
             continue
     return res
+
+def prepare_leave_social(data):
+    study_id = data['studyId']
+    user_id = data['username']
+
+    if "leave_requested" in data:
+        is_leave = data['leave_requested']
+
+        file_name = user_folder + '/' + study_id + '_' + user_id + '.json'
+
+        if os.path.isfile(file_name):
+            with open(file_name, encoding='utf-8') as f:
+                user_data = json.load(f)
+        else:
+            return add_user(data)
+
+        for key in data:
+            if key not in user_data:
+                user_data[key] = data[key]
+
+            # append status and if status is left from client or unknown add time_left for study leave
+            user_data['leave_requested'] = is_leave
+            if is_leave == 1:
+                user_data['time_leave_requested'] = int(data['time_leave_requested'])
+            else:
+                user_data['time_leave_requested'] = ''
+                # Write to file and return the file name for logging
+            with open(file_name, 'w', encoding='utf8') as f:
+                json.dump(user_data, f, ensure_ascii=False, indent=4)
+
+            return file_name
+
+        else:
+            return update_user(data)
 
 # update an already existent user. If the user is somehow not found, add him
 def update_user(data):
