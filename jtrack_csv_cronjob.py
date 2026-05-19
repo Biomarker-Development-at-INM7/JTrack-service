@@ -16,7 +16,7 @@ uid = pwd.getpwnam("jtrack").pw_uid
 gid = grp.getgrnam("jtrack").gr_gid
 
 # -------------------- CONFIGURATION -----------------------
-storage_folder = '/mnt/jutrack_data'
+storage_folder = '/mnt/jtrack_data'
 studys_folder = storage_folder + '/studies'
 users_folder = storage_folder + '/users'
 devices_folder = ""
@@ -56,7 +56,7 @@ def examine_user(study_folder, study_id, users):
 
     if "time_joined" in user_file:
         if isinstance(user_file["time_joined"], str):
-            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write(
                     "INFO: Different time_format (String) in " + users_folder + "/" + users + " - " + user_file[
                         "time_joined"] + "\n")
@@ -64,7 +64,7 @@ def examine_user(study_folder, study_id, users):
             user_joined = user_file["time_joined"] / 1000.0
     if "time_joined_ema" in user_file:
         if isinstance(user_file["time_joined_ema"], str):
-            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write(
                     "INFO: Different time_format (String) in " + users_folder + "/" + users + " - " + user_file[
                         "time_joined_ema"] + "\n")
@@ -76,7 +76,7 @@ def examine_user(study_folder, study_id, users):
 
     if "time_left" in user_file:
         if isinstance(user_file["time_left"], str):
-            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write(
                     "INFO: Different time_format (String) in " + users_folder + "/" + users + " - " + user_file[
                         "time_left"] + "\n")
@@ -84,7 +84,7 @@ def examine_user(study_folder, study_id, users):
             user_left = user_file["time_left"] / 1000.0
     if "time_left_ema" in user_file:
         if isinstance(user_file["time_left_ema"], str):
-            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write(
                     "INFO: Different time_format (String) in " + users_folder + "/" + users + " - " + user_file[
                         "time_left_ema"] + "\n")
@@ -177,7 +177,7 @@ def examine_device(app_desc, user_folder, studyid, users, devices, user_joined, 
             sensor_folder = device_folder + '/' + sensors
             sensor_files = get_files_in_folder(sensor_folder)
             number_of_files = len(sensor_files)
-            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write(str(users)+"\n")
                 log_file.write(str(number_of_files)+"\n")
             timestamp = "none"
@@ -211,9 +211,9 @@ def examine_device(app_desc, user_folder, studyid, users, devices, user_joined, 
                 else:
                     timestamp = datetime.fromtimestamp(int(timestamp) / 1000).strftime('%Y-%m-%d %H:%M:%S')
             #  print(timestamp)
-            # with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            # with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
             #     log_file.write(str(timestamp)+"\n")
-            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write(str(number_of_files)+"\n")
             device_data[sensors + " n_batches"] = number_of_files
             if timestamp == "":
@@ -233,7 +233,7 @@ def get_old_sensor_info(path):
         row_content = csv_content[row]
 
         if len(row_content) < 31:
-            with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+            with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write("ERROR: " + path + " is not working " + str(len(row_content)) + "\n")
         else:
             tmp = {sensor_names[0] + " n_batches": row_content[6],
@@ -463,13 +463,13 @@ def invoke_csv_for_all_studys():
 
 if __name__ == "__main__":
     try:
-        with open("/mnt/jutrack_data/jutrack_csv.log", "w") as log_file:
+        with open("/mnt/jtrack_data/jutrack_csv.log", "w") as log_file:
             log_file.write("Cron executed on: " + str(datetime.now()) + "\n")
         invoke_csv_for_all_studys()
-        with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+        with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
             log_file.write("Cron last successful on: " + str(datetime.now()) + "\n")
     except Exception as e:
-        with open("/mnt/jutrack_data/jutrack_csv.log", "a") as log_file:
+        with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
             log_file.write("An error occured during CSV creation at " + str(datetime.now()) + ":\n")
             log_file.write(str(sys.exc_info()))
             #log_file.write("An exception occurred:" +  type(e).__name__ + "–" + e.message)
