@@ -25,22 +25,43 @@ sensor_names = ['accelerometer', 'activity', 'application_usage', 'barometer', '
                 'location', 'magnetic_sensor', 'rotation_vector',
                 'linear_acceleration', 'ema', 'lockUnlock', 'voice', 'pedometer']
 
+wearable_sensor_names = [
+    "garmin_ACTIGRAPHY_1",
+    "garmin_ACTIGRAPHY_2",
+    "garmin_ACTIGRAPHY_3",
+    "garmin_BBI",
+    "garmin_CALORIES",
+    "garmin_ENHANCED_BBI",
+    "garmin_HEART_RATE",
+    "garmin_HRV",
+    "garmin_RESPIRATION",
+    "garmin_SPO2",
+    "garmin_STRESS",
+    "garmin_WRIST_STATUS",
+    "garmin_ZERO_CROSSING"
+]
+
 
 def prepare_csv(study_id):
     study_folder = studys_folder + '/' + study_id
 
     csv_data = []
+    wearable_csv_data = []
 
     for users in os.listdir(users_folder):
         if not users.startswith('.') and users.endswith('.json') and users.startswith(study_id + "_" + study_id + "_"):
-            user_data = examine_user(study_folder, study_id, users)
-            csv_data = csv_data + user_data
+            user_data, wearable_data = examine_user(study_folder, study_id, users)
+            csv_data += user_data
+            wearable_csv_data += wearable_data
 
     write_csv(study_id, csv_data)
+    if len(wearable_csv_data) > 0:
+        write_wearables_csv(study_id, wearable_csv_data)
 
 
 def examine_user(study_folder, study_id, users):
     user_data = []
+    wearable_data = []
     user_file = get_json_content(users_folder + "/" + users)
     user_id = user_file["username"]
     user_status = 0
@@ -109,42 +130,69 @@ def examine_user(study_folder, study_id, users):
         if len(os.listdir(user_folder)) == 1:
             devices = os.listdir(user_folder)[0]
             if "deviceid" in user_file and devices == user_file["deviceid"]:
-                user_data.append(
-                    examine_device("main", user_folder, study_id, user_id, devices, user_joined, user_left, days_in_study,
-                                   user_status, False))
+                row = examine_device("main", user_folder, study_id, user_id, devices, user_joined, user_left, days_in_study, user_status, False)
+                user_data.append(row)
+                if has_wearable_data(study_id, user_id, row["device_id"]):
+                    wearable_data.append(
+                        examine_wearable_device(row, study_id, user_id, row["device_id"])
+                    )
                 if "deviceid_ema" in user_file:
-                    user_data.append(
-                        examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_joined_ema,
-                                       user_left_ema, days_in_study_ema, user_status_ema, True))
+                    row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, True)
+                    user_data.append(row)
+                    if has_wearable_data(study_id, user_id, row["device_id"]):
+                        wearable_data.append(
+                            examine_wearable_device(row, study_id, user_id, row["device_id"])
+                        )
             elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
-                user_data.append(examine_device("ema", user_folder, study_id, user_id, devices, user_joined_ema, user_left_ema,
-                                                days_in_study_ema, user_status_ema, False))
+                row = examine_device("ema", user_folder, study_id, user_id, devices, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
+                user_data.append(row)
+                if has_wearable_data(study_id, user_id, row["device_id"]):
+                    wearable_data.append(
+                        examine_wearable_device(row, study_id, user_id, row["device_id"])
+                    )
                 if "deviceid" in user_file:
-                    user_data.append(
-                        examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_joined, user_left,
-                                       days_in_study, user_status, True))
+                    row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_joined, user_left, days_in_study, user_status, True)
+                    user_data.append(row)
+                    if has_wearable_data(study_id, user_id, row["device_id"]):
+                        wearable_data.append(
+                            examine_wearable_device(row, study_id, user_id, row["device_id"])
+                        )
         else:
             for devices in os.listdir(user_folder):
                 if "deviceid" in user_file and devices == user_file["deviceid"]:
-                    user_data.append(
-                        examine_device("main", user_folder, study_id, user_id, devices, user_joined, user_left, days_in_study,
-                                       user_status, False))
+                    row = examine_device("main", user_folder, study_id, user_id, devices, user_joined, user_left, days_in_study, user_status, False)
+                    user_data.append(row)
+                    if has_wearable_data(study_id, user_id, row["device_id"]):
+                        wearable_data.append(
+                            examine_wearable_device(row, study_id, user_id, row["device_id"])
+                        )
                 elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
-                    user_data.append(
-                        examine_device("ema", user_folder, study_id, user_id, devices, user_joined_ema, user_left_ema,
-                                       days_in_study_ema, user_status_ema, False))
+                    row = examine_device("ema", user_folder, study_id, user_id, devices, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
+                    user_data.append(row)
+                    if has_wearable_data(study_id, user_id, row["device_id"]):
+                        wearable_data.append(
+                            examine_wearable_device(row, study_id, user_id, row["device_id"])
+                        )
     else:
         if "deviceid" in user_file:
-            row_data = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_joined, user_left,
+            row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_joined, user_left,
                                       days_in_study,
                                       user_status, True)
-            user_data.append(row_data)
+            user_data.append(row)
+            if has_wearable_data(study_id, user_id, row["device_id"]):
+                wearable_data.append(
+                    examine_wearable_device(row, study_id, user_id, row["device_id"])
+                )
         if "deviceid_ema" in user_file:
-            row_data = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_joined_ema,
+            row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_joined_ema,
                                       user_left_ema, days_in_study_ema,
                                       user_status_ema, True)
-            user_data.append(row_data)
-    return user_data
+            user_data.append(row)
+            if has_wearable_data(study_id, user_id, row["device_id"]):
+                wearable_data.append(
+                    examine_wearable_device(row, study_id, user_id, row["device_id"])
+                )
+    return user_data, wearable_data
 
 
 def examine_device(app_desc, user_folder, studyid, users, devices, user_joined, user_left, days_in_study, user_status, new_user):
@@ -222,6 +270,92 @@ def examine_device(app_desc, user_folder, studyid, users, devices, user_joined, 
     device_data["device_id"] = device_data["device_id"] if device_data["device_id"] else "none"
     return device_data
 
+def examine_wearable_device(base_row, study_id, user_id, device_id):
+    row = {
+        "subject_name": user_id,
+        "device_id": device_id,
+        "date_registered": base_row.get("date_registered", "none"),
+        "date_left_study": base_row.get("date_left_study", "none"),
+        "time_in_study": base_row.get("time_in_study", "none"),
+        "status_code": base_row.get("status_code", "none"),
+        "app": base_row.get("app", "none")
+    }
+
+    device_folder = f"{studys_folder}/{study_id}/{user_id}/{device_id}"
+    transferred_dict = get_json_content("/var/www/jdash.inm7.de/service/folder_info.json")
+
+    for canonical_sensor in wearable_sensor_names:
+        found_sensor = canonical_sensor
+        sensor_folder = None
+
+        for possible in [canonical_sensor, canonical_sensor.lower(), canonical_sensor.upper()]:
+            candidate = f"{device_folder}/{possible}"
+            if os.path.isdir(candidate):
+                sensor_folder = candidate
+                found_sensor = possible
+                break
+
+        sensor_files = get_files_in_folder(sensor_folder) if sensor_folder else []
+        number_of_files = len(sensor_files)
+        timestamp = "none"
+
+        possible_transfer_keys = [
+            f"{study_id}/{user_id}/{device_id}/{found_sensor}",
+            f"{study_id}/{user_id}/{device_id}/{canonical_sensor}",
+            f"{study_id}/{user_id}/{device_id}/{canonical_sensor.lower()}",
+            f"{study_id}/{user_id}/{device_id}/{canonical_sensor.upper()}"
+        ]
+
+        for k in possible_transfer_keys:
+            if k in transferred_dict:
+                number_of_files += transferred_dict[k].get("number_of_files", 0)
+                timestamp = transferred_dict[k].get("last_file_received", timestamp)
+                break
+
+        if sensor_files:
+            timestamp = extract_timestamp_from_filename(sensor_files[-1])
+
+        row[canonical_sensor + " n_batches"] = number_of_files
+        row[canonical_sensor + " last_time_received"] = timestamp if timestamp else "none"
+
+    return row
+
+def has_wearable_data(study_id, user_id, device_id):
+    device_folder = f"{studys_folder}/{study_id}/{user_id}/{device_id}"
+
+    if not os.path.isdir(device_folder):
+        return False
+
+    for sensor in wearable_sensor_names:
+        for possible in [sensor, sensor.lower(), sensor.upper()]:
+            if os.path.isdir(f"{device_folder}/{possible}"):
+                return True
+
+    return False
+
+def extract_timestamp_from_filename(file_name):
+    timestamp = file_name.split('_')[-1].split('.')[0]
+
+    if len(timestamp) == 1:
+        timestamp = file_name.split('_')[-2]
+    elif len(timestamp) == 6:
+        file_parts = file_name.split('_')
+        date_send = file_parts[-4]
+        timestamp = date_send + "-" + file_parts[-3] + "-" + file_parts[-2]
+
+    if 'T' in timestamp:
+        date_send = timestamp.split('T')[0]
+        time_send = timestamp.split('T')[1]
+
+        if len(date_send.split('-')) == 3 and len(date_send.split('-')[0]) == 2:
+            date_send = date_send.split('-')[2] + "-" + date_send.split('-')[1] + "-" + date_send.split('-')[0]
+
+        return date_send + " " + time_send.replace('-', ':')
+
+    try:
+        return datetime.fromtimestamp(int(timestamp) / 1000).strftime('%Y-%m-%d %H:%M:%S')
+    except:
+        return timestamp
 
 def get_old_sensor_info(path):
     old_res = {}
@@ -427,6 +561,36 @@ def write_csv(study_id, csv_data):
         os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)
         os.chmod(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 0o664)
 
+def write_wearables_csv(study_id, csv_data):
+    path = storage_folder + '/jtrack_wearables_' + study_id + '.csv'
+
+    if os.path.isfile(path):
+        os.remove(path)
+
+    data_keys = [
+        "subject_name",
+        "device_id",
+        "date_registered",
+        "date_left_study",
+        "time_in_study",
+        "status_code",
+        "app"
+    ]
+
+    for sensor in wearable_sensor_names:
+        data_keys.append(sensor + " n_batches")
+        data_keys.append(sensor + " last_time_received")
+
+    with open(path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(data_keys)
+
+        for csv_row in csv_data:
+            writer.writerow([check_key(k, csv_row) for k in data_keys])
+
+    if os.path.isfile(path):
+        os.chown(path, uid, gid)
+        os.chmod(path, 0o664)
 
 def check_key(key, data):
     if key in data.keys():
