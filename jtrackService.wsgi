@@ -141,6 +141,8 @@ def is_valid_study(study_id, data):
         data_name = "no_sensor"
         if 'sensorname' in data[0]:
             data_name = data[0]['sensorname']
+        if 'wearable_sensor' in data[0] and data[0]['wearable_sensor'] != "":
+            data_name = data_name + "_" + data[0]['wearable_sensor']
 
         if study_id.strip() == "":
             study_id = "nonameStudy"
@@ -217,7 +219,7 @@ def is_valid_device(study_id, user_id, device_id, data):
         # user_data["deviceid_lastSend"] = device_id
         write_output_message("(Unknown device) Following deviceID tried to send data for user " + str(user_id) + ": "
                              + str(device_id))
-        print(device_id + " not recognized.")
+        print("DeviceID: " + device_id + " not recognized.")
     return data
 
 
@@ -230,6 +232,7 @@ def is_valid_sensor(sensorname):
 
 
 def is_valid_userdata(data):
+    print(data)
     if not ('studyId' in data and 'username' in data and ('status' in data or 'status_ema' in data)):
         raise JutrackValidationError("ERROR: The uploaded json does not include "
                                      "the required user content to update the user.")
@@ -297,7 +300,7 @@ def perform_action(action, data):
         if output_file == "":
             print('No changes made')
         else:
-            print(output_file + " written to disc.")
+            print(f"{output_file} written to disk.") # print(output_file + " written to disc.")
 
         return 'SUCCESS: User successfully updated'
 
@@ -348,7 +351,8 @@ def get_filename(data):
     user_id = data[0]['username']
     device_id = data[0]['deviceid']
     data_name = data[0]['sensorname']
-
+    if 'wearable_sensor' in data[0] and data[0]['wearable_sensor'] != "":
+            data_name = data_name + "_" + data[0]['wearable_sensor']
     # choose the first non-empty values to name the file properly
     chunk_x = 1
     while study_id == "" and len(data) > chunk_x:
@@ -368,6 +372,8 @@ def get_filename(data):
     chunk_x = 1
     while data_name == "" and len(data) > chunk_x:
         data_name = data[chunk_x]['sensorname']
+        if 'wearable_sensor' in data[chunk_x] and data[chunk_x]['wearable_sensor'] != "":
+            data_name = data_name + "_" + data[chunk_x]['wearable_sensor']
         chunk_x += 1
 
     # check for folder and create if a (sub-)folder does not exist
@@ -553,6 +559,7 @@ def prepare_leave_social(data):
     study_id = data['studyId']
     user_id = data['username']
 
+    print("assign study values to leave")
     if "leave_requested" in data:
         is_leave = data['leave_requested']
 
@@ -562,8 +569,10 @@ def prepare_leave_social(data):
             with open(file_name, encoding='utf-8') as f:
                 user_data = json.load(f)
         else:
+            print("No user data file present")
             return add_user(data)
 
+        print("User file present")
         for key in data:
             if key not in user_data:
                 user_data[key] = data[key]
@@ -580,8 +589,9 @@ def prepare_leave_social(data):
 
             return file_name
 
-        else:
-            return update_user(data)
+    else:
+        print("No leave requested parameter found")
+        return update_user(data)
 
 # update an already existent user. If the user is somehow not found, add him
 def update_user(data):
@@ -787,6 +797,7 @@ def application(environ, start_response):
                             output = {"message": "The user you tried to enroll has already been enrolled!"}
                 except JutrackValidationError as e:
                     status = '409 Conflict'
+                    print("409 " + e.message)
                     output = {"message": e.message}
                 except JutrackLeftUserError as e:
                     status = '403 Forbidden'
@@ -834,6 +845,8 @@ def application(environ, start_response):
                 output['study_duration'] = study_content['duration']
             if 'frequency' in study_content:
                 output['freq'] = study_content['frequency']
+            if 'wearables' in study_content:
+                output['wearables'] = study_content['wearables']
         elif 'status_ema' in data:
             output = data
             print(data['studyId'])
