@@ -37,6 +37,7 @@ wearable_sensor_names = [
     "garmin_RESPIRATION",
     "garmin_SPO2",
     "garmin_STRESS",
+    "garmin_STEPS",
     "garmin_WRIST_STATUS",
     "garmin_ZERO_CROSSING"
 ]
@@ -130,28 +131,28 @@ def examine_user(study_folder, study_id, users):
         if len(os.listdir(user_folder)) == 1:
             devices = os.listdir(user_folder)[0]
             if "deviceid" in user_file and devices == user_file["deviceid"]:
-                row = examine_device("main", user_folder, study_id, user_id, devices, user_joined, user_left, days_in_study, user_status, False)
+                row = examine_device("main", user_folder, study_id, user_id, devices, user_file.get("deviceBrand", "unknown"), user_joined, user_left, days_in_study, user_status, False)
                 user_data.append(row)
                 if has_wearable_data(study_id, user_id, row["device_id"]):
                     wearable_data.append(
                         examine_wearable_device(row, study_id, user_id, row["device_id"])
                     )
                 if "deviceid_ema" in user_file:
-                    row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, True)
+                    row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_file.get("deviceBrand_ema", "unknown"), user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, True)
                     user_data.append(row)
                     if has_wearable_data(study_id, user_id, row["device_id"]):
                         wearable_data.append(
                             examine_wearable_device(row, study_id, user_id, row["device_id"])
                         )
             elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
-                row = examine_device("ema", user_folder, study_id, user_id, devices, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
+                row = examine_device("ema", user_folder, study_id, user_id, devices, user_file.get("deviceBrand_ema", "unknown"), user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
                 user_data.append(row)
                 if has_wearable_data(study_id, user_id, row["device_id"]):
                     wearable_data.append(
                         examine_wearable_device(row, study_id, user_id, row["device_id"])
                     )
                 if "deviceid" in user_file:
-                    row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_joined, user_left, days_in_study, user_status, True)
+                    row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_file.get("deviceBrand", "unknown"), user_joined, user_left, days_in_study, user_status, True)
                     user_data.append(row)
                     if has_wearable_data(study_id, user_id, row["device_id"]):
                         wearable_data.append(
@@ -160,14 +161,14 @@ def examine_user(study_folder, study_id, users):
         else:
             for devices in os.listdir(user_folder):
                 if "deviceid" in user_file and devices == user_file["deviceid"]:
-                    row = examine_device("main", user_folder, study_id, user_id, devices, user_joined, user_left, days_in_study, user_status, False)
+                    row = examine_device("main", user_folder, study_id, user_id, devices, user_file.get("deviceBrand", "unknown"), user_joined, user_left, days_in_study, user_status, False)
                     user_data.append(row)
                     if has_wearable_data(study_id, user_id, row["device_id"]):
                         wearable_data.append(
                             examine_wearable_device(row, study_id, user_id, row["device_id"])
                         )
                 elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
-                    row = examine_device("ema", user_folder, study_id, user_id, devices, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
+                    row = examine_device("ema", user_folder, study_id, user_id, devices, user_file.get("deviceBrand_ema", "unknown"), user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
                     user_data.append(row)
                     if has_wearable_data(study_id, user_id, row["device_id"]):
                         wearable_data.append(
@@ -175,7 +176,7 @@ def examine_user(study_folder, study_id, users):
                         )
     else:
         if "deviceid" in user_file:
-            row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_joined, user_left,
+            row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_file.get("deviceBrand", "unknown"), user_joined, user_left,
                                       days_in_study,
                                       user_status, True)
             user_data.append(row)
@@ -184,7 +185,7 @@ def examine_user(study_folder, study_id, users):
                     examine_wearable_device(row, study_id, user_id, row["device_id"])
                 )
         if "deviceid_ema" in user_file:
-            row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_joined_ema,
+            row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_file.get("deviceBrand_ema", "unknown"), user_joined_ema,
                                       user_left_ema, days_in_study_ema,
                                       user_status_ema, True)
             user_data.append(row)
@@ -195,21 +196,21 @@ def examine_user(study_folder, study_id, users):
     return user_data, wearable_data
 
 
-def examine_device(app_desc, user_folder, studyid, users, devices, user_joined, user_left, days_in_study, user_status, new_user):
+def examine_device(app_desc, user_folder, studyid, users, devices, device_brand, user_joined, user_left, days_in_study, user_status, new_user):
     if new_user:
         if user_left == 0.0:
             date_left = "none"
         else:
             date_left = datetime.fromtimestamp(user_left).strftime("%Y-%m-%d %H:%M:%S")
 
-        device_data = {"app": app_desc, "subject_name": users, "device_id": devices,
+        device_data = {"app": app_desc, "subject_name": users, "device_id": devices, "device_brand": device_brand,
                        "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"),
                        "date_left_study": date_left,
                        "time_in_study": str(days_in_study) + " days", "status_code": user_status}
     else:
         device_folder = user_folder + '/' + devices
         if user_left == 0.0:
-            device_data = {"app": app_desc, "subject_name": users, "device_id": devices,
+            device_data = {"app": app_desc, "subject_name": users, "device_id": devices, "device_brand": device_brand,
                            "date_registered": datetime.fromtimestamp(user_joined).strftime("%Y-%m-%d %H:%M:%S"),
                            "date_left_study": "none",
                            "time_in_study": str(days_in_study) + " days", "status_code": user_status}
@@ -518,7 +519,7 @@ def write_csv(study_id, csv_data):
         os.remove(storage_folder + '/jutrack_dashboard_' + study_id + '.csv')
     with open(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        data_keys = ["subject_name", "device_id", "date_registered", "date_left_study", "time_in_study", "status_code",
+        data_keys = ["subject_name", "device_id", "device_brand", "date_registered", "date_left_study", "time_in_study", "status_code",
                      sensor_names[0] + " n_batches", sensor_names[0] + " last_time_received",
                      sensor_names[1] + " n_batches", sensor_names[1] + " last_time_received",
                      sensor_names[2] + " n_batches", sensor_names[2] + " last_time_received",
@@ -555,7 +556,7 @@ def write_csv(study_id, csv_data):
                              check_key(data_keys[28], csv_row), check_key(data_keys[29], csv_row),
                              check_key(data_keys[30], csv_row), check_key(data_keys[31], csv_row),
                              check_key(data_keys[32], csv_row), check_key(data_keys[33], csv_row),
-                             check_key(data_keys[34], csv_row)])
+                             check_key(data_keys[34], csv_row), check_key(data_keys[35], csv_row)])
 
     if os.path.isfile(storage_folder + '/jutrack_dashboard_' + study_id + '.csv'):
         os.chown(storage_folder + '/jutrack_dashboard_' + study_id + '.csv', uid, gid)
@@ -570,6 +571,7 @@ def write_wearables_csv(study_id, csv_data):
     data_keys = [
         "subject_name",
         "device_id",
+        "device_brand",
         "date_registered",
         "date_left_study",
         "time_in_study",

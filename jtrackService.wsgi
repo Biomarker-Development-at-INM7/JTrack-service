@@ -141,8 +141,17 @@ def is_valid_study(study_id, data):
         data_name = "no_sensor"
         if 'sensorname' in data[0]:
             data_name = data[0]['sensorname']
+
         if 'wearable_sensor' in data[0] and data[0]['wearable_sensor'] != "":
-            data_name = data_name + "_" + data[0]['wearable_sensor']
+            wearable = data[0]['wearable_sensor']
+
+            base_name = data_name.lower().replace("garmin_", "")
+            wearable_name = wearable.lower().replace("garmin_", "")
+
+            if base_name != wearable_name:
+                data_name = f"garmin_{wearable_name}"
+            else:
+                data_name = f"garmin_{base_name}"
 
         if study_id.strip() == "":
             study_id = "nonameStudy"
@@ -351,8 +360,18 @@ def get_filename(data):
     user_id = data[0]['username']
     device_id = data[0]['deviceid']
     data_name = data[0]['sensorname']
+
     if 'wearable_sensor' in data[0] and data[0]['wearable_sensor'] != "":
-            data_name = data_name + "_" + data[0]['wearable_sensor']
+        wearable = data[0]['wearable_sensor']
+
+        base_name = data_name.lower().replace("garmin_", "")
+        wearable_name = wearable.lower().replace("garmin_", "")
+
+        if base_name != wearable_name:
+            data_name = f"garmin_{wearable_name.upper()}"
+        else:
+            data_name = f"garmin_{base_name.upper()}"
+
     # choose the first non-empty values to name the file properly
     chunk_x = 1
     while study_id == "" and len(data) > chunk_x:
