@@ -88,8 +88,21 @@ def is_valid_data(body, action, verbose=0):
     if len(data) == 0:
         raise JutrackValidationError("ERROR: The uploaded content was empty.")
 
-    if 'status' in data or 'status_ema' in data:
-        return data
+    if isinstance(data, dict):
+        if 'status' in data or 'status_ema' in data:
+            return data
+
+        if action == "update_user" and 'sensorStates' in data:
+            study_id = data['studyId']
+            user_id = data['username']
+            device_id = data.get('deviceid', '')
+            is_valid_study(study_id, [data])
+            is_valid_user(study_id, user_id, "")
+            return is_valid_device(study_id, user_id, device_id, data)
+
+        raise JutrackValidationError(
+            "ERROR: Unsupported JSON object for action " + str(action)
+        )
 
     study_id = data[0]['studyId']
     user_id = data[0]['username']
@@ -242,7 +255,11 @@ def is_valid_sensor(sensorname):
 
 def is_valid_userdata(data):
     print(data)
-    if not ('studyId' in data and 'username' in data and ('status' in data or 'status_ema' in data)):
+    if not (
+            'studyId' in data
+            and 'username' in data
+            and ('status' in data or 'status_ema' in data or 'sensorStates' in data)
+    ):
         raise JutrackValidationError("ERROR: The uploaded json does not include "
                                      "the required user content to update the user.")
 
@@ -302,7 +319,9 @@ def perform_action(action, data):
     elif action == "update_user":
         is_valid_userdata(data)
 
-        if "status_ema" in data:
+        if "sensorStates" in data and "status" not in data and "status_ema" not in data:
+            output_file = update_sensor_states(data)
+        elif "status_ema" in data:
             output_file = update_ema(data)
         else:
             output_file = prepare_leave_social(data)
@@ -611,6 +630,32 @@ def prepare_leave_social(data):
     else:
         print("No leave requested parameter found")
         return update_user(data)
+
+def update_sensor_states(data):
+    study_id = data['studyId']
+    user_id = data['username']
+    file_name = user_folder + '/' + study_id + '_' + user_id + '.json'
+
+    if not os.path.isfile(file_name):
+        raise JutrackValidationError(
+            "Cannot update sensor states before the user has been registered"
+        )
+
+    with open(file_name, encoding='utf-8') as f:
+        user_data = json.load(f)
+
+    # This snapshot must be overwritten on every report so that it represents
+    # the effective flags currently used by the app, not only enrollment state.
+    user_data['sensorStates'] = data['sensorStates']
+    if 'appVersion' in data:
+        user_data['appVersion'] = data['appVersion']
+    if 'deviceModel' in data:
+        user_data['deviceModel'] = data['deviceModel']
+
+    with open(file_name, 'w', encoding='utf8') as f:
+        json.dump(user_data, f, ensure_ascii=False, indent=4)
+
+    return file_name
 
 # update an already existent user. If the user is somehow not found, add him
 def update_user(data):
