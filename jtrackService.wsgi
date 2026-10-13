@@ -15,6 +15,7 @@ __version__ = 0
 valid_data = [
     'accelerometer',
     'activity',
+    'homeBeacon',
     'application_usage',
     'barometer',
     'gravity_sensor',
@@ -652,6 +653,10 @@ def update_sensor_states(data):
     if 'deviceModel' in data:
         user_data['deviceModel'] = data['deviceModel']
 
+    push_token = data.get('pushNotification_token')
+    if isinstance(push_token, str) and push_token.strip():
+        user_data['pushNotification_token'] = push_token
+
     with open(file_name, 'w', encoding='utf8') as f:
         json.dump(user_data, f, ensure_ascii=False, indent=4)
 
@@ -938,6 +943,8 @@ def application(environ, start_response):
                 output['survey_ios'] = study_content['survey_ios']
             if 'images' in study_content:
                 output['images'] = study_content['images']
+        elif action == "update_user" and "sensorStates" in data:
+            output = data
         else:
             output = data[0]
 

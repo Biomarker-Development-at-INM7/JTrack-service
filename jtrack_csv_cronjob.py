@@ -38,6 +38,7 @@ wearable_sensor_names = [
     "garmin_SPO2",
     "garmin_STRESS",
     "garmin_STEPS",
+    "garmin_SLEEP",
     "garmin_WRIST_STATUS",
     "garmin_ZERO_CROSSING"
 ]
@@ -58,6 +59,22 @@ def prepare_csv(study_id):
     write_csv(study_id, csv_data)
     if len(wearable_csv_data) > 0:
         write_wearables_csv(study_id, wearable_csv_data)
+
+
+def normalize_device_brand(value):
+    value = str(value or "").strip().lower()
+
+    if any(name in value for name in ("ios", "iphone", "ipad", "apple")):
+        return "iOS"
+
+    if any(name in value for name in (
+        "android", "samsung", "google", "pixel", "xiaomi",
+        "redmi", "poco", "oneplus", "oppo", "vivo", "motorola",
+        "huawei", "honor", "realme", "nokia", "sony", "fairphone",
+    )):
+        return "Android"
+
+    return "unknown"
 
 
 def examine_user(study_folder, study_id, users):
@@ -126,33 +143,36 @@ def examine_user(study_folder, study_id, users):
     days_in_study = int(time_in_study / 86400.0)
     days_in_study_ema = int(time_in_study_ema / 86400.0)
 
+    device_brand = normalize_device_brand(user_file.get("deviceBrand"))
+    device_brand_ema = normalize_device_brand(user_file.get("deviceBrand_ema"))
+
     user_folder = study_folder + '/' + user_id
     if os.path.isdir(user_folder):
         if len(os.listdir(user_folder)) == 1:
             devices = os.listdir(user_folder)[0]
             if "deviceid" in user_file and devices == user_file["deviceid"]:
-                row = examine_device("main", user_folder, study_id, user_id, devices, user_file.get("deviceBrand", "unknown"), user_joined, user_left, days_in_study, user_status, False)
+                row = examine_device("main", user_folder, study_id, user_id, devices, device_brand, user_joined, user_left, days_in_study, user_status, False)
                 user_data.append(row)
                 if has_wearable_data(study_id, user_id, row["device_id"]):
                     wearable_data.append(
                         examine_wearable_device(row, study_id, user_id, row["device_id"])
                     )
                 if "deviceid_ema" in user_file:
-                    row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_file.get("deviceBrand_ema", "unknown"), user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, True)
+                    row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], device_brand_ema, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, True)
                     user_data.append(row)
                     if has_wearable_data(study_id, user_id, row["device_id"]):
                         wearable_data.append(
                             examine_wearable_device(row, study_id, user_id, row["device_id"])
                         )
             elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
-                row = examine_device("ema", user_folder, study_id, user_id, devices, user_file.get("deviceBrand_ema", "unknown"), user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
+                row = examine_device("ema", user_folder, study_id, user_id, devices, device_brand_ema, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
                 user_data.append(row)
                 if has_wearable_data(study_id, user_id, row["device_id"]):
                     wearable_data.append(
                         examine_wearable_device(row, study_id, user_id, row["device_id"])
                     )
                 if "deviceid" in user_file:
-                    row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_file.get("deviceBrand", "unknown"), user_joined, user_left, days_in_study, user_status, True)
+                    row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], device_brand, user_joined, user_left, days_in_study, user_status, True)
                     user_data.append(row)
                     if has_wearable_data(study_id, user_id, row["device_id"]):
                         wearable_data.append(
@@ -161,14 +181,14 @@ def examine_user(study_folder, study_id, users):
         else:
             for devices in os.listdir(user_folder):
                 if "deviceid" in user_file and devices == user_file["deviceid"]:
-                    row = examine_device("main", user_folder, study_id, user_id, devices, user_file.get("deviceBrand", "unknown"), user_joined, user_left, days_in_study, user_status, False)
+                    row = examine_device("main", user_folder, study_id, user_id, devices, device_brand, user_joined, user_left, days_in_study, user_status, False)
                     user_data.append(row)
                     if has_wearable_data(study_id, user_id, row["device_id"]):
                         wearable_data.append(
                             examine_wearable_device(row, study_id, user_id, row["device_id"])
                         )
                 elif "deviceid_ema" in user_file and devices == user_file["deviceid_ema"]:
-                    row = examine_device("ema", user_folder, study_id, user_id, devices, user_file.get("deviceBrand_ema", "unknown"), user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
+                    row = examine_device("ema", user_folder, study_id, user_id, devices, device_brand_ema, user_joined_ema, user_left_ema, days_in_study_ema, user_status_ema, False)
                     user_data.append(row)
                     if has_wearable_data(study_id, user_id, row["device_id"]):
                         wearable_data.append(
@@ -176,7 +196,7 @@ def examine_user(study_folder, study_id, users):
                         )
     else:
         if "deviceid" in user_file:
-            row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], user_file.get("deviceBrand", "unknown"), user_joined, user_left,
+            row = examine_device("main", user_folder, study_id, user_id, user_file["deviceid"], device_brand, user_joined, user_left,
                                       days_in_study,
                                       user_status, True)
             user_data.append(row)
@@ -185,7 +205,7 @@ def examine_user(study_folder, study_id, users):
                     examine_wearable_device(row, study_id, user_id, row["device_id"])
                 )
         if "deviceid_ema" in user_file:
-            row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], user_file.get("deviceBrand_ema", "unknown"), user_joined_ema,
+            row = examine_device("ema", user_folder, study_id, user_id, user_file["deviceid_ema"], device_brand_ema, user_joined_ema,
                                       user_left_ema, days_in_study_ema,
                                       user_status_ema, True)
             user_data.append(row)
