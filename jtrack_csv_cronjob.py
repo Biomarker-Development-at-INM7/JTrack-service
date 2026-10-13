@@ -289,6 +289,20 @@ def examine_device(app_desc, user_folder, studyid, users, devices, device_brand,
                 timestamp = None
             device_data[sensors + " last_time_received"] = timestamp
     device_data["device_id"] = device_data["device_id"] if device_data["device_id"] else "none"
+
+    brand = normalize_device_brand(device_brand)
+
+    if brand == "unknown" and app_desc == "main":
+        device_id = str(devices or "").strip()
+        letters = [char for char in device_id if char.isalpha()]
+
+        if letters and all(char.isupper() for char in letters):
+            brand = "iOS"
+        elif letters and all(char.islower() for char in letters):
+            brand = "Android"
+
+    device_data["device_brand"] = brand
+
     return device_data
 
 def examine_wearable_device(base_row, study_id, user_id, device_id):
