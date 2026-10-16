@@ -93,7 +93,7 @@ def is_valid_data(body, action, verbose=0):
         if 'status' in data or 'status_ema' in data:
             return data
 
-        if action == "update_user" and 'sensorStates' in data:
+        if action == "update_user":
             study_id = data['studyId']
             user_id = data['username']
             device_id = data.get('deviceid', '')
@@ -657,39 +657,75 @@ def update_sensor_states(data):
     if isinstance(push_token, str) and push_token.strip():
         user_data['pushNotification_token'] = push_token
 
+    if isinstance(data.get("permissionStates"), dict):
+    user_data["permissionStates"] = data["permissionStates"]
+
+    if isinstance(data.get("pendingData"), dict):
+    user_data["pendingData"] = data["pendingData"]
+
     with open(file_name, 'w', encoding='utf8') as f:
         json.dump(user_data, f, ensure_ascii=False, indent=4)
 
     return file_name
 
-# update an already existent user. If the user is somehow not found, add him
+
 def update_user(data):
     study_id = data['studyId']
     user_id = data['username']
-    status = data['status']
 
-    file_name = user_folder + '/' + study_id + '_' + user_id + '.json'
+    # Validate before potentially creating a user.
+    for key in ("sensorStates", "pendingData", "permissionStates"):
+        if key in data and not isinstance(data[key], dict):
+            raise JutrackValidationError(
+                f"ERROR: {key} must be a JSON object."
+            )
 
-    if os.path.isfile(file_name):
-        with open(file_name, encoding='utf-8') as f:
-            user_data = json.load(f)
-    else:
+    file_name = os.path.join(
+        user_folder, f"{study_id}_{user_id}.json"
+    )
+
+    if not os.path.isfile(file_name):
+        if 'status' not in data:
+            raise JutrackValidationError(
+                "ERROR: Cannot update a report for an unknown user."
+            )
         return add_user(data)
 
-    for key in data:
-        if key not in user_data:
+    with open(file_name, encoding='utf-8') as f:
+        user_data = json.load(f)
+
+    # Replace supplied snapshots and device metadata.
+    # Missing fields preserve existing values.
+    for key in (
+        "sensorStates", "pendingData", "permissionStates",
+        "appVersion", "deviceModel", "deviceBrand", "osVersion"
+    ):
+        if key in data:
             user_data[key] = data[key]
 
-    # append status and if status is left from client or unknown add time_left for study leave
-    user_data['status'] = status
-    if status == 1:
-        user_data['time_left'] = int(data['time_left'])
-    elif status == 3 or status == 2:
-        user_data['time_left'] = int(time.time() * 1000.0)
-    elif status == 0:
-        user_data['time_left'] = ''
-        # Write to file and return the file name for logging
-    with open(file_name, 'w', encoding='utf8') as f:
+    # Never replace a working token with an empty token.
+    token = data.get('pushNotification_token')
+    if isinstance(token, str) and token.strip():
+        user_data['pushNotification_token'] = token.strip()
+
+    # Preserve the existing behavior for other previously unknown fields.
+    for key, value in data.items():
+        if key not in user_data and key != 'pushNotification_token':
+            user_data[key] = value
+
+    # Reports must not change enrollment status or leave timestamps.
+    if 'status' in data:
+        status = data['status']
+        user_data['status'] = status
+
+        if status == 1:
+            user_data['time_left'] = int(data['time_left'])
+        elif status in (2, 3):
+            user_data['time_left'] = int(time.time() * 1000)
+        elif status == 0:
+            user_data['time_left'] = ''
+
+    with open(file_name, 'w', encoding='utf-8') as f:
         json.dump(user_data, f, ensure_ascii=False, indent=4)
 
     return file_name
