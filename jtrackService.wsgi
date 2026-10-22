@@ -658,10 +658,10 @@ def update_sensor_states(data):
         user_data['pushNotification_token'] = push_token
 
     if isinstance(data.get("permissionStates"), dict):
-    user_data["permissionStates"] = data["permissionStates"]
+        user_data["permissionStates"] = data["permissionStates"]
 
     if isinstance(data.get("pendingData"), dict):
-    user_data["pendingData"] = data["pendingData"]
+        user_data["pendingData"] = data["pendingData"]
 
     with open(file_name, 'w', encoding='utf8') as f:
         json.dump(user_data, f, ensure_ascii=False, indent=4)
