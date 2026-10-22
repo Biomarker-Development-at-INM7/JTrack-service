@@ -632,7 +632,17 @@ def prepare_leave_social(data):
         print("No leave requested parameter found")
         return update_user(data)
 
+def validate_shared_admin_report(data):
+    # Informational client-mode metadata only, never an authorization grant.
+    # Older clients omit this field; keep their existing stored value unchanged.
+    if 'isSharedAdmin' in data:
+        value = data['isSharedAdmin']
+        if type(value) is not int or value not in (0, 1):
+            raise JutrackValidationError("ERROR: isSharedAdmin must be 0 or 1.")
+
+
 def update_sensor_states(data):
+    validate_shared_admin_report(data)
     study_id = data['studyId']
     user_id = data['username']
     file_name = user_folder + '/' + study_id + '_' + user_id + '.json'
@@ -648,6 +658,8 @@ def update_sensor_states(data):
     # This snapshot must be overwritten on every report so that it represents
     # the effective flags currently used by the app, not only enrollment state.
     user_data['sensorStates'] = data['sensorStates']
+    if 'isSharedAdmin' in data:
+        user_data['isSharedAdmin'] = data['isSharedAdmin']
     if 'appVersion' in data:
         user_data['appVersion'] = data['appVersion']
     if 'deviceModel' in data:
@@ -670,6 +682,7 @@ def update_sensor_states(data):
 
 
 def update_user(data):
+    validate_shared_admin_report(data)
     study_id = data['studyId']
     user_id = data['username']
 
@@ -698,7 +711,7 @@ def update_user(data):
     # Missing fields preserve existing values.
     for key in (
         "sensorStates", "pendingData", "permissionStates",
-        "appVersion", "deviceModel", "deviceBrand", "osVersion"
+        "appVersion", "deviceModel", "deviceBrand", "osVersion", "isSharedAdmin"
     ):
         if key in data:
             user_data[key] = data[key]
