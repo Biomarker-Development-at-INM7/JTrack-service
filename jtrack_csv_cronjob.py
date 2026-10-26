@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 import time
 from datetime import datetime
@@ -8,12 +9,17 @@ import glob
 import json
 import pwd
 import grp
-import os
 import sys
-import numpy as np
 
-uid = pwd.getpwnam("jtrack").pw_uid
-gid = grp.getgrnam("jtrack").gr_gid
+try:
+    uid = pwd.getpwnam("jtrack").pw_uid
+except KeyError:
+    uid = os.getuid()
+
+try:
+    gid = grp.getgrnam("jtrack").gr_gid
+except KeyError:
+    gid = os.getgid()
 
 # -------------------- CONFIGURATION -----------------------
 storage_folder = '/mnt/jtrack_data'
@@ -661,16 +667,52 @@ def invoke_csv_for_all_studys():
             prepare_csv(studys)
 
 
-if __name__ == "__main__":
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="Create JTrack dashboard CSV files."
+    )
+    parser.add_argument(
+        "--study",
+        help=(
+            "Only create CSV files for this study. Without this option, "
+            "all study directories are processed."
+        ),
+    )
+    return parser.parse_args()
+
+
+def invoke_csv_for_study(study_id):
+    if not study_id or os.path.basename(study_id) != study_id:
+        raise ValueError("Invalid study ID: " + str(study_id))
+
+    study_folder = os.path.join(studys_folder, study_id)
+    if not os.path.isdir(study_folder):
+        raise ValueError("Study directory does not exist: " + study_folder)
+
+    prepare_csv(study_id)
+
+
+def main():
+    arguments = parse_arguments()
     try:
         with open("/mnt/jtrack_data/jutrack_csv.log", "w") as log_file:
             log_file.write("Cron executed on: " + str(datetime.now()) + "\n")
-        invoke_csv_for_all_studys()
+            if arguments.study:
+                log_file.write("Creating CSV for study: " + arguments.study + "\n")
+
+        if arguments.study:
+            invoke_csv_for_study(arguments.study)
+        else:
+            invoke_csv_for_all_studys()
+
         with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
             log_file.write("Cron last successful on: " + str(datetime.now()) + "\n")
-    except Exception as e:
+    except Exception:
         with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
             log_file.write("An error occured during CSV creation at " + str(datetime.now()) + ":\n")
             log_file.write(str(sys.exc_info()))
             #log_file.write("An exception occurred:" +  type(e).__name__ + "–" + e.message)
 
+
+if __name__ == "__main__":
+    main()

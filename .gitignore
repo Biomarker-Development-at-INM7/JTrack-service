@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+test_jtrack.py
+
+pytest_files/
+
 # C extensions
 *.so
 
@@ -127,3 +131,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.idea/
