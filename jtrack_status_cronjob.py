@@ -142,6 +142,7 @@ def expected_sensors(study):
     if passive is None:
         passive = study.get("sensors", study.get("sensor-list", []))
     active = study.get("sensor_list_limited", [])
+    wearables = study.get("wearables", [])
 
     result = []
     seen = set()
@@ -153,6 +154,19 @@ def expected_sensors(study):
                 continue
             seen.add((mode, sensor))
             result.append((sensor, mode))
+
+    if isinstance(wearables, list):
+        for wearable in wearables:
+            if not isinstance(wearable, dict):
+                continue
+            sensor = wearable.get("sensorname")
+            if not isinstance(sensor, str):
+                continue
+            sensor = sensor.strip().lower()
+            if not sensor or ("wearable", sensor) in seen:
+                continue
+            seen.add(("wearable", sensor))
+            result.append((sensor, "wearable"))
     return result
 
 
