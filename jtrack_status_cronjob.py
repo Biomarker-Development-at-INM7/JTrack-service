@@ -3,8 +3,10 @@
 
 import argparse
 import csv
+import grp
 import json
 import os
+import pwd
 import sys
 import tempfile
 from datetime import datetime
@@ -102,7 +104,7 @@ def parse_arguments():
     parser.add_argument(
         "--output-folder",
         type=Path,
-        help="CSV output folder (default: the storage root).",
+        help="CSV output folder (default: <storage-root>/study_status).",
     )
     return parser.parse_args()
 
@@ -298,6 +300,11 @@ def rows_for_study(study_id, study, users):
 
 def write_csv_atomic(path, rows):
     path.parent.mkdir(parents=True, exist_ok=True)
+    identity = jtrack_identity()
+    os.chmod(path.parent, 0o2775)
+    if identity:
+        os.chown(path.parent, identity[0], identity[1])
+
     temporary_path = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -314,11 +321,28 @@ def write_csv_atomic(path, rows):
             writer.writeheader()
             writer.writerows(rows)
         os.chmod(temporary_path, 0o664)
+        if identity:
+            os.chown(temporary_path, identity[0], identity[1])
         os.replace(temporary_path, path)
         temporary_path = None
     finally:
         if temporary_path and temporary_path.exists():
             temporary_path.unlink()
+
+
+def jtrack_identity():
+    """Return the jtrack UID/GID used for generated status artifacts."""
+    try:
+        return pwd.getpwnam("jtrack").pw_uid, grp.getgrnam("jtrack").gr_gid
+    except KeyError as error:
+        # Developer machines need not have the production service account.
+        # On the production host, a root-run cron must not silently create
+        # artifacts with the wrong ownership.
+        if os.geteuid() == 0:
+            raise RuntimeError(
+                "The required jtrack user or group does not exist"
+            ) from error
+        return None
 
 
 def discover_studies(studies_folder, requested_study):
@@ -350,7 +374,9 @@ def main():
     storage_root = arguments.storage_root.resolve()
     studies_folder = storage_root / "studies"
     users_folder = storage_root / "users"
-    output_folder = (arguments.output_folder or storage_root).resolve()
+    output_folder = (
+        arguments.output_folder or storage_root / "study_status"
+    ).resolve()
 
     if not studies_folder.is_dir() or not users_folder.is_dir():
         print(f"Invalid JTrack storage root: {storage_root}", file=sys.stderr)
