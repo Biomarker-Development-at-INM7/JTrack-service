@@ -238,17 +238,21 @@ def permission_result(sensor, permission_states):
     return "granted", [], []
 
 
-def numeric_pending_values(pending_data):
+def pending_total_for_sensors(pending_data, sensors):
     if not isinstance(pending_data, dict):
-        return []
-    values = []
-    for key, value in pending_data.items():
-        if key.endswith("PendingData") and isinstance(value, (int, float)) and not isinstance(value, bool):
-            values.append(value)
-    return values
+        return ""
+
+    total = 0
+    for key in {pending_key(sensor) for sensor, _mode in sensors}:
+        value = pending_data.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            total += value
+    return total
 
 
-def row_for_sensor(study_id, username, user, enrolled, sensor, mode):
+def row_for_sensor(
+    study_id, username, user, enrolled, sensor, mode, total_pending
+):
     sensor_states = user.get("sensorStates")
     permissions = user.get("permissionStates")
     pending = user.get("pendingData")
@@ -258,7 +262,6 @@ def row_for_sensor(study_id, username, user, enrolled, sensor, mode):
     enabled = sensor_states.get(key) if isinstance(sensor_states, dict) and key else None
     permission_status, missing, unknown = permission_result(sensor, permissions)
     pending_value = pending.get(pending_key(sensor)) if isinstance(pending, dict) else None
-    total_pending = sum(numeric_pending_values(pending)) if isinstance(pending, dict) else ""
 
     permission_time = permissions.get("permissionsCheckedAt") if isinstance(permissions, dict) else None
     pending_time = pending.get("pendingDataCountedAt") if isinstance(pending, dict) else None
@@ -305,9 +308,16 @@ def rows_for_study(study_id, study, users):
         is_enrolled = enrolled is None or username in enrolled
         if not is_enrolled:
             continue
+        total_pending = pending_total_for_sensors(user.get("pendingData"), sensors)
         for sensor, mode in sensors:
             rows.append(row_for_sensor(
-                study_id, username, user, is_enrolled, sensor, mode
+                study_id,
+                username,
+                user,
+                is_enrolled,
+                sensor,
+                mode,
+                total_pending,
             ))
     return rows
 
