@@ -83,6 +83,66 @@ def normalize_device_brand(value):
     return "unknown"
 
 
+def latest_file_modification_time(file_paths):
+    """Return the newest local batch mtime in the dashboard timestamp format."""
+    timestamps = []
+    for path in file_paths:
+        try:
+            timestamps.append(os.path.getmtime(path))
+        except OSError:
+            # A nightly move may remove a file while the CSV is being built.
+            continue
+
+    if not timestamps:
+        return "none"
+
+    return datetime.fromtimestamp(max(timestamps)).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+
+def newest_received_time(local_timestamp, inventoried_timestamp):
+    """Return the newest valid dashboard timestamp from both data sources."""
+    parsed = []
+    for value in (local_timestamp, inventoried_timestamp):
+        if not value or value == "none":
+            continue
+        try:
+            parsed.append((datetime.strptime(value, "%Y-%m-%d %H:%M:%S"), value))
+        except (TypeError, ValueError):
+            continue
+
+    if parsed:
+        return max(parsed, key=lambda item: item[0])[1]
+    if local_timestamp and local_timestamp != "none":
+        return local_timestamp
+    if inventoried_timestamp and inventoried_timestamp != "none":
+        return inventoried_timestamp
+    return "none"
+
+
+def combined_batch_count(sensor_files, inventory_entry):
+    """Combine local and inventoried batches without counting a file twice."""
+    if not isinstance(inventory_entry, dict):
+        return len(sensor_files)
+
+    inventoried_count = inventory_entry.get("number_of_files", 0)
+    if not isinstance(inventoried_count, int) or isinstance(inventoried_count, bool):
+        inventoried_count = 0
+
+    source_files = inventory_entry.get("source_files")
+    if not isinstance(source_files, list):
+        # Compatibility with the old inventory format, whose count represented
+        # only files that had already been moved away.
+        return inventoried_count + len(sensor_files)
+
+    inventoried_names = {
+        name for name in source_files if isinstance(name, str)
+    }
+    local_names = {os.path.basename(path) for path in sensor_files}
+    return inventoried_count + len(local_names - inventoried_names)
+
+
 def examine_user(study_folder, study_id, users):
     user_data = []
     wearable_data = []
@@ -251,43 +311,22 @@ def examine_device(app_desc, user_folder, studyid, users, devices, device_brand,
         for sensors in os.listdir(device_folder):
             sensor_folder = device_folder + '/' + sensors
             sensor_files = get_files_in_folder(sensor_folder)
-            number_of_files = len(sensor_files)
+            inventory_key = studyid+"/"+users+"/"+devices+"/"+sensors
+            transferred = transferred_dict.get(inventory_key, {})
+            number_of_files = combined_batch_count(sensor_files, transferred)
             with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write(str(users)+"\n")
-                log_file.write(str(number_of_files)+"\n")
-            timestamp = "none"
-
-            if studyid+"/"+users+"/"+devices+"/"+sensors in transferred_dict:
-                number_of_files += transferred_dict[studyid+"/"+users+"/"+devices+"/"+sensors]["number_of_files"]
-                if "last_file_received" in transferred_dict[studyid+"/"+users+"/"+devices+"/"+sensors]:
-                    timestamp = transferred_dict[studyid+"/"+users+"/"+devices+"/"+sensors]["last_file_received"]
+                log_file.write(str(len(sensor_files))+"\n")
+            timestamp = newest_received_time(
+                latest_file_modification_time(sensor_files),
+                transferred.get("last_file_received")
+                if isinstance(transferred, dict) else None,
+            )
 
             if number_of_files == 0:
                 device_data[sensors + " n_batches"] = number_of_files
-                device_data[sensors + " last_time_received"] = "none"
+                device_data[sensors + " last_time_received"] = timestamp
                 continue
-
-            if len(sensor_files) > 0:
-                file_name = sensor_files[len(sensor_files) - 1]
-                timestamp = file_name.split('_')[len(file_name.split('_')) - 1].split('.')[0]
-                if len(timestamp) == 1:
-                    timestamp = file_name.split('_')[len(file_name.split('_')) - 2]
-                elif len(timestamp) == 6:
-                    file_parts = file_name.split('_')
-                    date_send = file_parts[len(file_parts) - 4]
-                    timestamp = date_send + "-" + file_parts[len(file_parts) - 3] + "-" + file_parts[len(file_parts) - 2]
-                if 'T' in timestamp:
-                    date_send = timestamp.split('T')[0]
-                    time_send = timestamp.split('T')[1]
-                    if len(date_send.split('-')) == 3 and len(date_send.split('-')[0]) == 2:
-                        res = date_send.split('-')[2] + "-" + date_send.split('-')[1] + "-" + date_send.split('-')[0]
-                        date_send = res
-                    timestamp = date_send + " " + time_send.replace('-', ':')
-                else:
-                    timestamp = datetime.fromtimestamp(int(timestamp) / 1000).strftime('%Y-%m-%d %H:%M:%S')
-            #  print(timestamp)
-            # with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
-            #     log_file.write(str(timestamp)+"\n")
             with open("/mnt/jtrack_data/jutrack_csv.log", "a") as log_file:
                 log_file.write(str(number_of_files)+"\n")
             device_data[sensors + " n_batches"] = number_of_files
@@ -337,8 +376,7 @@ def examine_wearable_device(base_row, study_id, user_id, device_id):
                 break
 
         sensor_files = get_files_in_folder(sensor_folder) if sensor_folder else []
-        number_of_files = len(sensor_files)
-        timestamp = "none"
+        transferred = {}
 
         possible_transfer_keys = [
             f"{study_id}/{user_id}/{device_id}/{found_sensor}",
@@ -349,12 +387,15 @@ def examine_wearable_device(base_row, study_id, user_id, device_id):
 
         for k in possible_transfer_keys:
             if k in transferred_dict:
-                number_of_files += transferred_dict[k].get("number_of_files", 0)
-                timestamp = transferred_dict[k].get("last_file_received", timestamp)
+                transferred = transferred_dict[k]
                 break
 
-        if sensor_files:
-            timestamp = extract_timestamp_from_filename(sensor_files[-1])
+        number_of_files = combined_batch_count(sensor_files, transferred)
+        timestamp = newest_received_time(
+            latest_file_modification_time(sensor_files),
+            transferred.get("last_file_received")
+            if isinstance(transferred, dict) else None,
+        )
 
         row[canonical_sensor + " n_batches"] = number_of_files
         row[canonical_sensor + " last_time_received"] = timestamp if timestamp else "none"
@@ -373,30 +414,6 @@ def has_wearable_data(study_id, user_id, device_id):
                 return True
 
     return False
-
-def extract_timestamp_from_filename(file_name):
-    timestamp = file_name.split('_')[-1].split('.')[0]
-
-    if len(timestamp) == 1:
-        timestamp = file_name.split('_')[-2]
-    elif len(timestamp) == 6:
-        file_parts = file_name.split('_')
-        date_send = file_parts[-4]
-        timestamp = date_send + "-" + file_parts[-3] + "-" + file_parts[-2]
-
-    if 'T' in timestamp:
-        date_send = timestamp.split('T')[0]
-        time_send = timestamp.split('T')[1]
-
-        if len(date_send.split('-')) == 3 and len(date_send.split('-')[0]) == 2:
-            date_send = date_send.split('-')[2] + "-" + date_send.split('-')[1] + "-" + date_send.split('-')[0]
-
-        return date_send + " " + time_send.replace('-', ':')
-
-    try:
-        return datetime.fromtimestamp(int(timestamp) / 1000).strftime('%Y-%m-%d %H:%M:%S')
-    except:
-        return timestamp
 
 def get_old_sensor_info(path):
     old_res = {}
