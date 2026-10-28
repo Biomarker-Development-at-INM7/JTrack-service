@@ -1,3 +1,4 @@
+import argparse
 import fcntl
 import grp
 import json
@@ -9,6 +10,22 @@ from pathlib import Path
 
 ROOT_FOLDER = Path("/mnt/jtrack_data/studies")
 OUTPUT_FILE = Path("/var/www/jdash.inm7.de/service/folder_info.json")
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="Update the temporary JTrack sensor inventory."
+    )
+    parser.add_argument(
+        "--base-inventory",
+        type=Path,
+        help=(
+            "Optional permanent-storage inventory. Matching counts and "
+            "timestamps replace the existing historical baseline before "
+            "current temporary files are added."
+        ),
+    )
+    return parser.parse_args()
 
 
 def get_json_content(file_path):
@@ -67,6 +84,37 @@ def is_sensor_path(relative_path):
         len(relative_path.parts) == 4
         and not any(part.startswith(".") for part in relative_path.parts)
     )
+
+
+def apply_base_inventory(previous_inventory, base_inventory):
+    merged = dict(previous_inventory)
+    for key, value in base_inventory.items():
+        if (
+            not isinstance(key, str)
+            or not isinstance(value, dict)
+            or not is_sensor_path(Path(key))
+        ):
+            continue
+
+        count = value.get("number_of_files")
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+            raise ValueError(f"Invalid number_of_files for {key}: {count!r}")
+
+        entry = {
+            "number_of_files": count,
+            # All files represented by the baseline are already permanent.
+            # Current temporary files must therefore be added once.
+            "source_files": [],
+        }
+        last_received = value.get("last_file_received")
+        if last_received is not None:
+            if parse_time(last_received) is None:
+                raise ValueError(
+                    f"Invalid last_file_received for {key}: {last_received!r}"
+                )
+            entry["last_file_received"] = last_received
+        merged[key] = entry
+    return merged
 
 
 def get_folder_info(root_folder, previous_inventory=None):
@@ -182,11 +230,17 @@ def write_json_atomic(path, content):
 
 
 def main():
+    arguments = parse_arguments()
     lock_path = OUTPUT_FILE.with_suffix(OUTPUT_FILE.suffix + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with lock_path.open("a") as lock_file:
         fcntl.flock(lock_file, fcntl.LOCK_EX)
         previous_inventory = get_json_content(OUTPUT_FILE)
+        if arguments.base_inventory is not None:
+            base_inventory = get_json_content(arguments.base_inventory.resolve())
+            previous_inventory = apply_base_inventory(
+                previous_inventory, base_inventory
+            )
         folder_info = get_folder_info(ROOT_FOLDER, previous_inventory)
         write_json_atomic(OUTPUT_FILE, folder_info)
 
