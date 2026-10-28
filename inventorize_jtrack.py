@@ -119,10 +119,9 @@ def get_folder_info(root_folder, previous_inventory=None):
         if files:
             candidate_timestamp = max(mtime_ns for _, _, mtime_ns in files) / 1e9
         else:
-            try:
-                candidate_timestamp = sensor_folder.stat().st_mtime
-            except OSError:
-                candidate_timestamp = None
+            # Moving files away changes the folder mtime, but does not mean
+            # that new sensor data was received.
+            candidate_timestamp = None
 
         entry = {
             "number_of_files": previous_count + added_count,
