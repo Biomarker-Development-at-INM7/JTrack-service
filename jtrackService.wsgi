@@ -7,6 +7,7 @@ import sys
 import time
 import smtplib
 import pwd
+import re
 
 # ---------------------------------------CONFIGURATION
 # server version
@@ -265,6 +266,30 @@ def is_valid_userdata(data):
                                      "the required user content to update the user.")
 
 
+def validate_registration_identifiers(study_id, username):
+    """Validate identifiers supplied while enrolling a subject."""
+    if not isinstance(study_id, str) or not study_id:
+        raise JutrackValidationError("Invalid or missing studyId.")
+
+    if study_id in (".", "..") or "/" in study_id or "\\" in study_id or "\x00" in study_id:
+        raise JutrackValidationError("Invalid studyId format detected: " + str(study_id))
+
+    study_json = os.path.join(studies_folder, study_id, study_id + ".json")
+    if not os.path.isfile(study_json):
+        raise JutrackValidationError("Unknown studyId detected: " + study_id)
+
+    if not isinstance(username, str):
+        raise JutrackValidationError("Invalid or missing username.")
+
+    expected_username = rf"{re.escape(study_id)}_\d{{5}}_[1-9]"
+    if re.fullmatch(expected_username, username) is None:
+        raise JutrackValidationError(
+            "Invalid username format detected. Expected "
+            + study_id
+            + "_DDDDD_I with exactly five subject digits and one iteration digit from 1 to 9."
+        )
+
+
 def is_valid_admin(data):
     study_id = data["studyId"]
     username = data["username"]
@@ -479,6 +504,8 @@ def admin_user(data):
 def add_user(data):
     study_id = data['studyId']
     user_id = data['username']
+
+    validate_registration_identifiers(study_id, user_id)
 
     # apply study duration
     app_type = ""
@@ -795,8 +822,22 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
         return total_duration, 0
     else:
         user_json = user_folder + '/' + study_id + '_' + user + '_' + str(iteration-1) + '.json'
-        with open(user_json, encoding='utf-8') as s:
-            user_data = json.load(s)
+        missing_previous_message = (
+            "Previous subject iteration is missing. Expected "
+            + user
+            + "_"
+            + str(iteration - 1)
+            + " before registering "
+            + user_id
+            + "."
+        )
+        if not os.path.isfile(user_json):
+            raise JutrackValidationError(missing_previous_message)
+        try:
+            with open(user_json, encoding='utf-8') as s:
+                user_data = json.load(s)
+        except FileNotFoundError:
+            raise JutrackValidationError(missing_previous_message)
 
         if app_type == "ema" and "time_left_ema" in user_data:
             if int(user_data["time_left_ema"]) == 0:
