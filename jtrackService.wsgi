@@ -59,8 +59,10 @@ class JutrackValidationError(JutrackError):
         message -- explanation of the error
     """
 
-    def __init__(self, message):
+    def __init__(self, message, error_code="VALIDATION_ERROR"):
+        super().__init__(message)
         self.message = message
+        self.error_code = error_code
 
 
 class JutrackLeftUserError(JutrackError):
@@ -269,24 +271,28 @@ def is_valid_userdata(data):
 def validate_registration_identifiers(study_id, username):
     """Validate identifiers supplied while enrolling a subject."""
     if not isinstance(study_id, str) or not study_id:
-        raise JutrackValidationError("Invalid or missing studyId.")
+        raise JutrackValidationError("Invalid or missing studyId.", "INVALID_STUDY_ID")
 
     if study_id in (".", "..") or "/" in study_id or "\\" in study_id or "\x00" in study_id:
-        raise JutrackValidationError("Invalid studyId format detected: " + str(study_id))
+        raise JutrackValidationError(
+            "Invalid studyId format detected: " + str(study_id),
+            "INVALID_STUDY_ID"
+        )
 
     study_json = os.path.join(studies_folder, study_id, study_id + ".json")
     if not os.path.isfile(study_json):
-        raise JutrackValidationError("Unknown studyId detected: " + study_id)
+        raise JutrackValidationError("Unknown studyId detected: " + study_id, "INVALID_STUDY_ID")
 
     if not isinstance(username, str):
-        raise JutrackValidationError("Invalid or missing username.")
+        raise JutrackValidationError("Invalid or missing username.", "INVALID_SUBJECT_ID")
 
     expected_username = rf"{re.escape(study_id)}_\d{{5}}_[1-9]"
     if re.fullmatch(expected_username, username) is None:
         raise JutrackValidationError(
             "Invalid username format detected. Expected "
             + study_id
-            + "_DDDDD_I with exactly five subject digits and one iteration digit from 1 to 9."
+            + "_DDDDD_I with exactly five subject digits and one iteration digit from 1 to 9.",
+            "INVALID_SUBJECT_ID"
         )
 
 
@@ -832,12 +838,18 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
             + "."
         )
         if not os.path.isfile(user_json):
-            raise JutrackValidationError(missing_previous_message)
+            raise JutrackValidationError(
+                missing_previous_message,
+                "PREVIOUS_SUBJECT_ITERATION_REQUIRED"
+            )
         try:
             with open(user_json, encoding='utf-8') as s:
                 user_data = json.load(s)
         except FileNotFoundError:
-            raise JutrackValidationError(missing_previous_message)
+            raise JutrackValidationError(
+                missing_previous_message,
+                "PREVIOUS_SUBJECT_ITERATION_REQUIRED"
+            )
 
         if app_type == "ema" and "time_left_ema" in user_data:
             if int(user_data["time_left_ema"]) == 0:
@@ -950,14 +962,20 @@ def application(environ, start_response):
                     else:
                         if output == "user exists":
                             status = '422 Existing Data Error'
-                            output = {"message": "The user you tried to add already exists!"}
+                            output = {
+                                "message": "The user you tried to add already exists!",
+                                "error_code": "SUBJECT_ALREADY_ENROLLED"
+                            }
                         elif output == "user already enrolled":
                             status = '422 Existing Data Error'
-                            output = {"message": "The user you tried to enroll has already been enrolled!"}
+                            output = {
+                                "message": "The user you tried to enroll has already been enrolled!",
+                                "error_code": "SUBJECT_ALREADY_ENROLLED"
+                            }
                 except JutrackValidationError as e:
                     status = '409 Conflict'
                     print("409 " + e.message)
-                    output = {"message": e.message}
+                    output = {"message": e.message, "error_code": e.error_code}
                 except JutrackLeftUserError as e:
                     status = '403 Forbidden'
                     output = {"message": e.message}
