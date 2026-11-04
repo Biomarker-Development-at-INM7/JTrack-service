@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 
 test_jtrack.py
+folder_info.json
+folder_info.json.lock
 
 pytest_files/
 
