@@ -86,6 +86,15 @@ FIELDNAMES = [
     "pending_data_counted_at",
     "last_status_update",
     "user_json_updated_at",
+    "wearable_device_state_status",
+    "wearable_device_count",
+    "wearable_device_ids",
+    "wearable_models",
+    "wearable_connection_states",
+    "wearable_bluetooth_states",
+    "wearable_last_connected_at",
+    "wearable_last_sync_at",
+    "wearable_last_send_at",
 ]
 
 
@@ -250,6 +259,59 @@ def pending_total_for_sensors(pending_data, sensors):
     return total
 
 
+def wearable_device_summary(user, sensor, mode):
+    """Return aligned, semicolon-separated device details for a wearable row."""
+    empty = {
+        "wearable_device_state_status": "",
+        "wearable_device_count": "",
+        "wearable_device_ids": "",
+        "wearable_models": "",
+        "wearable_connection_states": "",
+        "wearable_bluetooth_states": "",
+        "wearable_last_connected_at": "",
+        "wearable_last_sync_at": "",
+        "wearable_last_send_at": "",
+    }
+    if mode != "wearable":
+        return empty
+
+    device_states = user.get("deviceStates")
+    if not isinstance(device_states, dict) or sensor not in device_states:
+        report_status = "not_reported"
+        devices = []
+    elif device_states[sensor] is None:
+        report_status = "sdk_not_ready"
+        devices = []
+    elif isinstance(device_states[sensor], list):
+        devices = device_states[sensor]
+        report_status = "reported" if devices else "no_devices"
+    else:
+        report_status = "not_reported"
+        devices = []
+    devices = [device for device in devices if isinstance(device, dict)]
+
+    def joined_value(key):
+        return ";".join(
+            str(device.get(key, "")) if device.get(key) is not None else ""
+            for device in devices
+        )
+
+    def joined_time(key):
+        return ";".join(format_milliseconds(device.get(key)) for device in devices)
+
+    return {
+        "wearable_device_state_status": report_status,
+        "wearable_device_count": len(devices),
+        "wearable_device_ids": joined_value("deviceId"),
+        "wearable_models": joined_value("model"),
+        "wearable_connection_states": joined_value("connectionState"),
+        "wearable_bluetooth_states": joined_value("bluetoothState"),
+        "wearable_last_connected_at": joined_time("lastConnectedAt"),
+        "wearable_last_sync_at": joined_time("lastSyncAt"),
+        "wearable_last_send_at": joined_time("lastSendAt"),
+    }
+
+
 def row_for_sensor(
     study_id, username, user, enrolled, sensor, mode, total_pending
 ):
@@ -270,7 +332,7 @@ def row_for_sensor(
 
     required_permissions = SENSOR_PERMISSIONS.get(sensor, ())
     source_path = user.get("_source_path")
-    return {
+    row = {
         "study_id": study_id,
         "username": username,
         "device_id": user.get("deviceid", ""),
@@ -297,6 +359,8 @@ def row_for_sensor(
         "last_status_update": format_milliseconds(last_update),
         "user_json_updated_at": format_file_time(source_path) if isinstance(source_path, Path) else "",
     }
+    row.update(wearable_device_summary(user, sensor, mode))
+    return row
 
 
 def rows_for_study(study_id, study, users):

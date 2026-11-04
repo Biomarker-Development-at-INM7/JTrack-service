@@ -708,6 +708,9 @@ def update_sensor_states(data):
     if isinstance(data.get("pendingData"), dict):
         user_data["pendingData"] = data["pendingData"]
 
+    if isinstance(data.get("deviceStates"), dict):
+        user_data["deviceStates"] = data["deviceStates"]
+
     with open(file_name, 'w', encoding='utf8') as f:
         json.dump(user_data, f, ensure_ascii=False, indent=4)
 
@@ -720,7 +723,9 @@ def update_user(data):
     user_id = data['username']
 
     # Validate before potentially creating a user.
-    for key in ("sensorStates", "pendingData", "permissionStates"):
+    for key in (
+        "sensorStates", "pendingData", "permissionStates", "deviceStates"
+    ):
         if key in data and not isinstance(data[key], dict):
             raise JutrackValidationError(
                 f"ERROR: {key} must be a JSON object."
@@ -743,7 +748,7 @@ def update_user(data):
     # Replace supplied snapshots and device metadata.
     # Missing fields preserve existing values.
     for key in (
-        "sensorStates", "pendingData", "permissionStates",
+        "sensorStates", "pendingData", "permissionStates", "deviceStates",
         "appVersion", "deviceModel", "deviceBrand", "osVersion", "isSharedAdmin"
     ):
         if key in data:
