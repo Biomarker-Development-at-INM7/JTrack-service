@@ -832,60 +832,69 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
     if iteration == 1:
         return total_duration, 0
     else:
-        user_json = user_folder + '/' + study_id + '_' + user + '_' + str(iteration-1) + '.json'
-        missing_previous_message = (
-            "Previous subject iteration is missing. Expected "
-            + user
-            + "_"
-            + str(iteration - 1)
-            + " before registering "
-            + user_id
-            + "."
+        joined_key = "time_joined_ema" if app_type == "ema" else "time_joined"
+        left_key = "time_left_ema" if app_type == "ema" else "time_left"
+        milliseconds_per_day = 86400 * 1000
+        used_milliseconds = 0
+        initial_join = 0
+
+        for previous_iteration in range(1, iteration):
+            previous_user_id = user + '_' + str(previous_iteration)
+            user_json = user_folder + '/' + study_id + '_' + previous_user_id + '.json'
+            missing_previous_message = (
+                "Previous subject iteration is missing. Expected "
+                + previous_user_id
+                + " before registering "
+                + user_id
+                + "."
+            )
+            if not os.path.isfile(user_json):
+                raise JutrackValidationError(
+                    missing_previous_message,
+                    "PREVIOUS_SUBJECT_ITERATION_REQUIRED"
+                )
+
+            try:
+                with open(user_json, encoding='utf-8') as s:
+                    user_data = json.load(s)
+            except FileNotFoundError:
+                raise JutrackValidationError(
+                    missing_previous_message,
+                    "PREVIOUS_SUBJECT_ITERATION_REQUIRED"
+                )
+
+            joined = int(user_data.get(joined_key, 0))
+            left = int(user_data.get(left_key, 0))
+
+            if previous_iteration == 1:
+                initial_join = joined
+                if initial_join == 0:
+                    fallback_joined_key = (
+                        "time_joined" if app_type == "ema" else "time_joined_ema"
+                    )
+                    initial_join = int(user_data.get(fallback_joined_key, 0))
+
+            if joined > 0:
+                if left == 0:
+                    # Preserve the legacy behavior for an iteration without a
+                    # recorded leave time: account for at least one day.
+                    used_milliseconds += milliseconds_per_day
+                elif left > joined:
+                    used_milliseconds += left - joined
+
+        used_days, remaining_milliseconds = divmod(
+            used_milliseconds,
+            milliseconds_per_day
         )
-        if not os.path.isfile(user_json):
-            raise JutrackValidationError(
-                missing_previous_message,
-                "PREVIOUS_SUBJECT_ITERATION_REQUIRED"
-            )
-        try:
-            with open(user_json, encoding='utf-8') as s:
-                user_data = json.load(s)
-        except FileNotFoundError:
-            raise JutrackValidationError(
-                missing_previous_message,
-                "PREVIOUS_SUBJECT_ITERATION_REQUIRED"
-            )
+        # Round the cumulative usage to the nearest full day. Exactly twelve
+        # hours rounds down; only a remainder greater than twelve hours rounds
+        # up to the next day.
+        if remaining_milliseconds > milliseconds_per_day / 2:
+            used_days += 1
 
-        if app_type == "ema" and "time_left_ema" in user_data:
-            if int(user_data["time_left_ema"]) == 0:
-                remaining_duration = total_duration - 1
-            else:
-                remaining_duration = total_duration - int((int(user_data["time_left_ema"]) / 1000.0 - int(user_data["time_joined_ema"]) / 1000.0) / 86400.0)
-        elif app_type != "ema" and "time_left" in user_data:
-            if int(user_data["time_left"]) == 0:
-                remaining_duration = total_duration - 1
-            else:
-                remaining_duration = total_duration - int((int(user_data["time_left"]) / 1000.0 - int(user_data["time_joined"]) / 1000.0) / 86400.0)
-        else:
-            remaining_duration = total_duration
-
+        remaining_duration = max(0, total_duration - used_days)
         print("Remaining: " + str(remaining_duration))
-        if os.path.isfile(user_folder + '/' + study_id + '_' + user + '_1.json'):
-            user_json = user_folder + '/' + study_id + '_' + user + '_1.json'
-            with open(user_json, encoding='utf-8') as s:
-                user_data = json.load(s)
-            if app_type == "ema":
-                if "time_joined_ema" not in user_data:
-                    return total_duration, user_data["time_joined"]
-                else:
-                    return remaining_duration, user_data["time_joined_ema"]
-            else:
-                if "time_joined" not in user_data:
-                    return total_duration, user_data["time_joined_ema"]
-                else:
-                    return remaining_duration, user_data["time_joined"]
-        else:
-            return remaining_duration, 0
+        return remaining_duration, initial_join
 
 
 def get_active_labeling(study_id):
@@ -1023,8 +1032,6 @@ def application(environ, start_response):
                 output['task_list'] = study_content['task_list']
             if 'sensor_list_limited' in study_content:
                 output['sensor_list_limited'] = study_content['sensor_list_limited']
-            if 'duration' in study_content:
-                output['study_duration'] = study_content['duration']
             if 'frequency' in study_content:
                 output['freq'] = study_content['frequency']
             if 'wearables' in study_content:
@@ -1046,8 +1053,6 @@ def application(environ, start_response):
                 output['task_list'] = study_content['task_list']
             if 'sensor_list_limited' in study_content:
                 output['sensor_list_limited'] = study_content['sensor_list_limited']
-            if 'duration' in study_content:
-                output['study_duration'] = study_content['duration']
             if 'version' in study_content:
                 output['version'] = study_content['version']
             if 'survey' in study_content:
