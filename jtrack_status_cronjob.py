@@ -78,8 +78,13 @@ FIELDNAMES = [
     "sensor_match",
     "required_permissions",
     "permission_status",
+    "permission_evidence",
+    "granted_permissions",
+    "denied_permissions",
     "missing_permissions",
     "unknown_permissions",
+    "not_requested_permissions",
+    "unreported_permissions",
     "sensor_pending_count",
     "total_pending_count",
     "permissions_checked_at",
@@ -228,37 +233,95 @@ def bool_csv(value):
     return "unknown"
 
 
+def permission_names(permission_states, key):
+    if not isinstance(permission_states, dict):
+        return set()
+    values = permission_states.get(key, [])
+    if not isinstance(values, list):
+        return set()
+    return {value for value in values if isinstance(value, str)}
+
+
 def permission_result(
     sensor,
     permission_states,
     mode="passive",
     active_data_measured=False,
+    sensor_data_received=False,
     pending_value=None,
 ):
     required = SENSOR_PERMISSIONS.get(sensor, ())
+    result = {
+        "status": "not_required",
+        "evidence": [],
+        "granted": [],
+        "denied": [],
+        "unknown": [],
+        "not_requested": [],
+        "unreported": [],
+    }
     if not required:
-        return "not_required", [], []
-    if not isinstance(permission_states, dict):
-        return "no_report", list(required), []
+        return result
 
     has_pending_data = (
         isinstance(pending_value, (int, float))
         and not isinstance(pending_value, bool)
         and pending_value > 0
     )
-    if mode == "active" and not active_data_measured and not has_pending_data:
-        return "not_required_yet", [], []
+    if sensor_data_received:
+        result["evidence"].append("sensor_folder")
+    if has_pending_data:
+        result["evidence"].append("pending_data")
 
-    granted = set(permission_states.get("permissionGranted", []))
-    unknown = set(permission_states.get("permissionUnknown", []))
-    unknown_required = [name for name in required if name in unknown]
-    missing = [name for name in required if name not in granted and name not in unknown]
+    has_permission_report = isinstance(permission_states, dict)
+    if has_permission_report:
+        granted = permission_names(permission_states, "permissionGranted")
+        denied = permission_names(permission_states, "permissionDenied")
+        unknown = permission_names(permission_states, "permissionUnknown")
+        not_requested = permission_names(
+            permission_states,
+            "permissionNotRequested",
+        )
+    else:
+        granted = set()
+        denied = set()
+        unknown = set()
+        not_requested = set()
 
-    if missing:
-        return "missing", missing, unknown_required
-    if unknown_required:
-        return "unknown", [], unknown_required
-    return "granted", [], []
+    result["granted"] = [name for name in required if name in granted]
+    result["denied"] = [name for name in required if name in denied]
+    result["unknown"] = [name for name in required if name in unknown]
+    result["not_requested"] = [name for name in required if name in not_requested]
+    result["unreported"] = [
+        name
+        for name in required
+        if name not in granted
+        and name not in denied
+        and name not in unknown
+        and name not in not_requested
+    ]
+
+    if any((result["granted"], result["denied"], result["unknown"], result["not_requested"])):
+        result["evidence"].insert(0, "current_report")
+
+    if result["denied"]:
+        result["status"] = "revoked" if sensor_data_received or has_pending_data else "denied"
+    elif len(result["granted"]) == len(required):
+        result["status"] = "granted"
+    elif result["unknown"]:
+        result["status"] = "unknown"
+    elif result["not_requested"]:
+        result["status"] = "not_required_yet"
+    elif sensor_data_received or has_pending_data:
+        result["status"] = "previously_granted"
+    elif mode == "active" and not active_data_measured:
+        result["status"] = "not_required_yet"
+    elif not has_permission_report:
+        result["status"] = "no_report"
+    else:
+        result["status"] = "unverified"
+
+    return result
 
 
 def pending_total_for_sensors(pending_data, sensors):
@@ -273,20 +336,26 @@ def pending_total_for_sensors(pending_data, sensors):
     return total
 
 
-def active_labeling_data_exists(studies_folder, study_id, username, device_id):
-    """Return whether this subject has started an active-labeling measurement."""
+def subject_data_folder_exists(
+    studies_folder,
+    study_id,
+    username,
+    device_id,
+    folder_name,
+):
+    """Return whether a named data folder exists for any subject device."""
     subject_folder = studies_folder / study_id / username
     if not subject_folder.is_dir():
         return False
 
     if isinstance(device_id, str) and device_id:
-        if (subject_folder / device_id / "active_labeling").is_dir():
+        if (subject_folder / device_id / folder_name).is_dir():
             return True
 
     try:
         return any(
             path.is_dir()
-            for path in subject_folder.glob("*/active_labeling")
+            for path in subject_folder.glob(f"*/{folder_name}")
         )
     except OSError:
         return False
@@ -354,6 +423,7 @@ def row_for_sensor(
     mode,
     total_pending,
     active_data_measured=False,
+    sensor_data_received=False,
 ):
     sensor_states = user.get("sensorStates")
     permissions = user.get("permissionStates")
@@ -363,11 +433,12 @@ def row_for_sensor(
     key = state_key(sensor, mode)
     enabled = sensor_states.get(key) if isinstance(sensor_states, dict) and key else None
     pending_value = pending.get(pending_key(sensor)) if isinstance(pending, dict) else None
-    permission_status, missing, unknown = permission_result(
+    permission = permission_result(
         sensor,
         permissions,
         mode,
         active_data_measured,
+        sensor_data_received,
         pending_value,
     )
 
@@ -395,9 +466,16 @@ def row_for_sensor(
         "actual_enabled": bool_csv(enabled),
         "sensor_match": "yes" if enabled is True else ("no" if enabled is False else "unknown"),
         "required_permissions": ";".join(required_permissions),
-        "permission_status": permission_status,
-        "missing_permissions": ";".join(missing),
-        "unknown_permissions": ";".join(unknown),
+        "permission_status": permission["status"],
+        "permission_evidence": ";".join(permission["evidence"]),
+        "granted_permissions": ";".join(permission["granted"]),
+        "denied_permissions": ";".join(permission["denied"]),
+        # Keep this legacy column for existing JDash consumers. It now only
+        # contains explicitly denied permissions, never merely absent ones.
+        "missing_permissions": ";".join(permission["denied"]),
+        "unknown_permissions": ";".join(permission["unknown"]),
+        "not_requested_permissions": ";".join(permission["not_requested"]),
+        "unreported_permissions": ";".join(permission["unreported"]),
         "sensor_pending_count": pending_value if isinstance(pending_value, (int, float)) and not isinstance(pending_value, bool) else "",
         "total_pending_count": total_pending,
         "permissions_checked_at": format_milliseconds(permission_time),
@@ -419,13 +497,22 @@ def rows_for_study(study_id, study, users, studies_folder):
         if not is_enrolled:
             continue
         total_pending = pending_total_for_sensors(user.get("pendingData"), sensors)
-        active_data_measured = active_labeling_data_exists(
+        device_id = user.get("deviceid")
+        active_data_measured = subject_data_folder_exists(
             studies_folder,
             study_id,
             username,
-            user.get("deviceid"),
+            device_id,
+            "active_labeling",
         )
         for sensor, mode in sensors:
+            sensor_data_received = subject_data_folder_exists(
+                studies_folder,
+                study_id,
+                username,
+                device_id,
+                sensor,
+            )
             rows.append(row_for_sensor(
                 study_id,
                 username,
@@ -435,6 +522,7 @@ def rows_for_study(study_id, study, users, studies_folder):
                 mode,
                 total_pending,
                 active_data_measured,
+                sensor_data_received,
             ))
     return rows
 
