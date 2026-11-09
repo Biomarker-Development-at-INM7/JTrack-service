@@ -228,12 +228,26 @@ def bool_csv(value):
     return "unknown"
 
 
-def permission_result(sensor, permission_states):
+def permission_result(
+    sensor,
+    permission_states,
+    mode="passive",
+    active_data_measured=False,
+    pending_value=None,
+):
     required = SENSOR_PERMISSIONS.get(sensor, ())
     if not required:
         return "not_required", [], []
     if not isinstance(permission_states, dict):
         return "no_report", list(required), []
+
+    has_pending_data = (
+        isinstance(pending_value, (int, float))
+        and not isinstance(pending_value, bool)
+        and pending_value > 0
+    )
+    if mode == "active" and not active_data_measured and not has_pending_data:
+        return "not_required_yet", [], []
 
     granted = set(permission_states.get("permissionGranted", []))
     unknown = set(permission_states.get("permissionUnknown", []))
@@ -257,6 +271,25 @@ def pending_total_for_sensors(pending_data, sensors):
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             total += value
     return total
+
+
+def active_labeling_data_exists(studies_folder, study_id, username, device_id):
+    """Return whether this subject has started an active-labeling measurement."""
+    subject_folder = studies_folder / study_id / username
+    if not subject_folder.is_dir():
+        return False
+
+    if isinstance(device_id, str) and device_id:
+        if (subject_folder / device_id / "active_labeling").is_dir():
+            return True
+
+    try:
+        return any(
+            path.is_dir()
+            for path in subject_folder.glob("*/active_labeling")
+        )
+    except OSError:
+        return False
 
 
 def wearable_device_summary(user, sensor, mode):
@@ -313,7 +346,14 @@ def wearable_device_summary(user, sensor, mode):
 
 
 def row_for_sensor(
-    study_id, username, user, enrolled, sensor, mode, total_pending
+    study_id,
+    username,
+    user,
+    enrolled,
+    sensor,
+    mode,
+    total_pending,
+    active_data_measured=False,
 ):
     sensor_states = user.get("sensorStates")
     permissions = user.get("permissionStates")
@@ -322,8 +362,14 @@ def row_for_sensor(
 
     key = state_key(sensor, mode)
     enabled = sensor_states.get(key) if isinstance(sensor_states, dict) and key else None
-    permission_status, missing, unknown = permission_result(sensor, permissions)
     pending_value = pending.get(pending_key(sensor)) if isinstance(pending, dict) else None
+    permission_status, missing, unknown = permission_result(
+        sensor,
+        permissions,
+        mode,
+        active_data_measured,
+        pending_value,
+    )
 
     permission_time = permissions.get("permissionsCheckedAt") if isinstance(permissions, dict) else None
     pending_time = pending.get("pendingDataCountedAt") if isinstance(pending, dict) else None
@@ -363,7 +409,7 @@ def row_for_sensor(
     return row
 
 
-def rows_for_study(study_id, study, users):
+def rows_for_study(study_id, study, users, studies_folder):
     sensors = expected_sensors(study)
     enrolled = enrollment_set(study)
     rows = []
@@ -373,6 +419,12 @@ def rows_for_study(study_id, study, users):
         if not is_enrolled:
             continue
         total_pending = pending_total_for_sensors(user.get("pendingData"), sensors)
+        active_data_measured = active_labeling_data_exists(
+            studies_folder,
+            study_id,
+            username,
+            user.get("deviceid"),
+        )
         for sensor, mode in sensors:
             rows.append(row_for_sensor(
                 study_id,
@@ -382,6 +434,7 @@ def rows_for_study(study_id, study, users):
                 sensor,
                 mode,
                 total_pending,
+                active_data_measured,
             ))
     return rows
 
@@ -488,6 +541,7 @@ def main():
                 study_id,
                 study,
                 users_by_study.get(study_id, {}),
+                studies_folder,
             )
             output_path = output_folder / f"jtrack_{study_id}_status.csv"
             write_csv_atomic(output_path, rows)
