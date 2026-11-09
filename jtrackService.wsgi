@@ -517,11 +517,18 @@ def add_user(data):
     app_type = ""
     if "applicationType" in data:
         app_type = data['applicationType']
-    data["study_duration"], data["initial_join"] = get_remaining_days_in_study(study_id, user_id, app_type)
-    # data["study_duration"] = res[0]
-    # data["initial_join"] = res[1]
-    if data["study_duration"] < 0:
-        write_output_message("(ERROR)Insufficient study duration " + str(data["study_duration"]) + " for user " + str(user_id) +
+    duration, remaining_duration, initial_join = get_remaining_days_in_study(
+        study_id,
+        user_id,
+        app_type,
+    )
+    # The phone uses study_duration with initial_join for its own calculation.
+    # The server-calculated value is exposed separately for comparison/use.
+    data["study_duration"] = duration
+    data["remaining_duration"] = remaining_duration
+    data["initial_join"] = initial_join
+    if remaining_duration < 0:
+        write_output_message("(ERROR)Insufficient study duration " + str(remaining_duration) + " for user " + str(user_id) +
                              " in study " + str(study_id) + ", user could not be added to use the app!\n"+json.dumps(data))
         raise JutrackValidationError("Exceeded study duration detected")
     data["active_labeling"] = get_active_labeling(study_id)
@@ -717,6 +724,56 @@ def update_sensor_states(data):
     return file_name
 
 
+def build_sensor_config_response(data):
+    """Build the opt-in sensor configuration for a saved status report."""
+    response_version = data.get("sensorConfigResponseVersion")
+    if type(response_version) is not int or response_version != 1:
+        return None
+
+    suggest_enable = []
+    study_id = data.get("studyId", "")
+    sensor_states = data.get("sensorStates")
+
+    try:
+        study_json = os.path.join(
+            studies_folder,
+            study_id,
+            study_id + ".json",
+        )
+        with open(study_json, encoding="utf-8") as json_file:
+            study = json.load(json_file)
+
+        # Match the existing study configuration precedence: sensor_list is
+        # authoritative when present, with legacy passive-list keys as fallback.
+        passive_sensors = study.get("sensor_list")
+        if passive_sensors is None:
+            passive_sensors = study.get(
+                "sensors",
+                study.get("sensor-list", []),
+            )
+        if not isinstance(passive_sensors, list):
+            passive_sensors = []
+
+        if (
+            "pedometer" in passive_sensors
+            and isinstance(sensor_states, dict)
+            and sensor_states.get("JTrack_pedometerEnabled") is False
+        ):
+            suggest_enable.append("pedometer")
+    except (OSError, json.JSONDecodeError, TypeError):
+        # The status report has already been saved successfully. A response
+        # hint must never turn that successful legacy operation into an error.
+        suggest_enable = []
+
+    return {
+        "version": 1,
+        "studyId": study_id,
+        "username": data.get("username", ""),
+        "deviceid": data.get("deviceid", ""),
+        "suggestEnable": suggest_enable,
+    }
+
+
 def update_user(data):
     validate_shared_admin_report(data)
     study_id = data['studyId']
@@ -830,7 +887,7 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
     print("Total duration:" + str(total_duration))
 
     if iteration == 1:
-        return total_duration, 0
+        return total_duration, total_duration, 0
     else:
         joined_key = "time_joined_ema" if app_type == "ema" else "time_joined"
         left_key = "time_left_ema" if app_type == "ema" else "time_left"
@@ -894,7 +951,7 @@ def get_remaining_days_in_study(study_id, user_id, app_type):
 
         remaining_duration = max(0, total_duration - used_days)
         print("Remaining: " + str(remaining_duration))
-        return remaining_duration, initial_join
+        return total_duration, remaining_duration, initial_join
 
 
 def get_active_labeling(study_id):
@@ -1063,6 +1120,9 @@ def application(environ, start_response):
                 output['images'] = study_content['images']
         elif action == "update_user" and "sensorStates" in data:
             output = data
+            sensor_config = build_sensor_config_response(data)
+            if sensor_config is not None:
+                output["sensorConfig"] = sensor_config
         else:
             output = data[0]
 
