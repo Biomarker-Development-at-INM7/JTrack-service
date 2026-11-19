@@ -8,6 +8,9 @@ import time
 import smtplib
 import pwd
 import re
+import fcntl
+import tempfile
+import uuid
 
 # ---------------------------------------CONFIGURATION
 # server version
@@ -39,6 +42,17 @@ studies_folder = storage_folder + '/studies'
 junk_folder = storage_folder + '/junk'
 user_folder = storage_folder + '/users'
 content = {}
+
+# The diagnostic background probe is intentionally disabled unless explicitly
+# enabled in the WSGI process environment. Its data is isolated from study,
+# participant, dashboard, and sensor-upload storage.
+BACKGROUND_PROBE_STORE_DEFAULT = (
+    '/mnt/jtrack_data/diagnostics/background_probe_receipts.json'
+)
+BACKGROUND_PROBE_MAX_BODY_BYTES = 256
+BACKGROUND_PROBE_RETENTION_SECONDS_DEFAULT = 24 * 60 * 60
+BACKGROUND_PROBE_RATE_WINDOW_SECONDS_DEFAULT = 60
+BACKGROUND_PROBE_RATE_MAX_DEFAULT = 10
 
 uid = pwd.getpwnam("www-data").pw_uid
 s_uid = pwd.getpwnam("jfischer").pw_uid
@@ -74,6 +88,285 @@ class JutrackLeftUserError(JutrackError):
 
     def __init__(self, message):
         self.message = message
+
+
+class BackgroundProbeRateLimitError(Exception):
+    """Raised when the enabled diagnostic probe exceeds its global rate."""
+    pass
+
+
+class BackgroundProbeStoreError(Exception):
+    """Raised when a probe receipt cannot be durably read or recorded."""
+    pass
+
+
+def environment_value(name, default=None, environ=None):
+    # Apache SetEnv values are present directly in the WSGI environ. HTTP
+    # headers use an HTTP_ prefix and therefore cannot alter this setting.
+    if isinstance(environ, dict) and name in environ:
+        return environ[name]
+    return os.environ.get(name, default)
+
+
+def environment_flag(name, default=False, environ=None):
+    value = environment_value(name, None, environ)
+    if value is None:
+        return default
+    return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def positive_environment_integer(name, default, environ=None):
+    try:
+        value = int(environment_value(name, default, environ))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+def background_probe_json_response(start_response, status, payload, headers=None):
+    response_headers = [
+        ('Content-type', 'application/json'),
+        ('Cache-Control', 'no-store'),
+    ]
+    if headers:
+        response_headers.extend(headers)
+    start_response(status, response_headers)
+    return [json.dumps(payload, separators=(',', ':')).encode('utf-8')]
+
+
+def read_background_probe_receipts(path):
+    if not os.path.exists(path):
+        return []
+    if os.path.islink(path):
+        raise BackgroundProbeStoreError('Diagnostic receipt store is a symlink')
+
+    try:
+        with open(path, encoding='utf-8') as receipt_file:
+            receipts = json.load(receipt_file)
+    except (OSError, json.JSONDecodeError) as error:
+        raise BackgroundProbeStoreError(str(error)) from error
+
+    if not isinstance(receipts, list):
+        raise BackgroundProbeStoreError('Diagnostic receipt store is not a list')
+    for receipt in receipts:
+        if (
+            not isinstance(receipt, dict)
+            or set(receipt) != {'requestId', 'receivedAtMs'}
+            or not isinstance(receipt['requestId'], str)
+            or type(receipt['receivedAtMs']) is not int
+        ):
+            raise BackgroundProbeStoreError('Invalid diagnostic receipt entry')
+    return receipts
+
+
+def write_background_probe_receipts(path, receipts):
+    directory = os.path.dirname(path)
+    temporary_path = None
+    try:
+        os.makedirs(directory, mode=0o2770, exist_ok=True)
+        descriptor, temporary_path = tempfile.mkstemp(
+            dir=directory,
+            prefix='.background_probe_receipts.',
+            suffix='.tmp',
+        )
+        with os.fdopen(descriptor, 'w', encoding='utf-8') as receipt_file:
+            json.dump(receipts, receipt_file, ensure_ascii=False, indent=2)
+            receipt_file.flush()
+            os.fsync(receipt_file.fileno())
+        os.chmod(temporary_path, 0o660)
+        os.replace(temporary_path, path)
+        temporary_path = None
+    except OSError as error:
+        raise BackgroundProbeStoreError(str(error)) from error
+    finally:
+        if temporary_path and os.path.exists(temporary_path):
+            try:
+                os.unlink(temporary_path)
+            except OSError:
+                pass
+
+
+def record_background_probe_receipt(request_id, environ=None):
+    store_path = environment_value(
+        'JTRACK_BACKGROUND_PROBE_STORE',
+        BACKGROUND_PROBE_STORE_DEFAULT,
+        environ,
+    )
+    retention_seconds = positive_environment_integer(
+        'JTRACK_BACKGROUND_PROBE_RETENTION_SECONDS',
+        BACKGROUND_PROBE_RETENTION_SECONDS_DEFAULT,
+        environ,
+    )
+    rate_window_seconds = positive_environment_integer(
+        'JTRACK_BACKGROUND_PROBE_RATE_WINDOW_SECONDS',
+        BACKGROUND_PROBE_RATE_WINDOW_SECONDS_DEFAULT,
+        environ,
+    )
+    rate_max = positive_environment_integer(
+        'JTRACK_BACKGROUND_PROBE_RATE_MAX',
+        BACKGROUND_PROBE_RATE_MAX_DEFAULT,
+        environ,
+    )
+
+    if not isinstance(store_path, str) or not os.path.isabs(store_path):
+        raise BackgroundProbeStoreError(
+            'JTRACK_BACKGROUND_PROBE_STORE must be an absolute path'
+        )
+
+    directory = os.path.dirname(store_path)
+    lock_path = store_path + '.lock'
+    now_ms = int(time.time() * 1000)
+    expiry_cutoff_ms = now_ms - retention_seconds * 1000
+    rate_cutoff_ms = now_ms - rate_window_seconds * 1000
+
+    try:
+        os.makedirs(directory, mode=0o2770, exist_ok=True)
+        with open(lock_path, 'a+', encoding='utf-8') as lock_file:
+            os.chmod(lock_path, 0o660)
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+
+            receipts = read_background_probe_receipts(store_path)
+            active_receipts = [
+                receipt
+                for receipt in receipts
+                if receipt['receivedAtMs'] >= expiry_cutoff_ms
+            ]
+
+            for receipt in active_receipts:
+                if receipt['requestId'] == request_id:
+                    if len(active_receipts) != len(receipts):
+                        write_background_probe_receipts(store_path, active_receipts)
+                    return receipt
+
+            recent_receipts = sum(
+                receipt['receivedAtMs'] >= rate_cutoff_ms
+                for receipt in active_receipts
+            )
+            if recent_receipts >= rate_max:
+                if len(active_receipts) != len(receipts):
+                    write_background_probe_receipts(store_path, active_receipts)
+                raise BackgroundProbeRateLimitError()
+
+            receipt = {
+                'requestId': request_id,
+                'receivedAtMs': now_ms,
+            }
+            active_receipts.append(receipt)
+            write_background_probe_receipts(store_path, active_receipts)
+            return receipt
+    except BackgroundProbeRateLimitError:
+        raise
+    except BackgroundProbeStoreError:
+        raise
+    except OSError as error:
+        raise BackgroundProbeStoreError(str(error)) from error
+
+
+def handle_background_probe(environ, start_response):
+    if not environment_flag(
+        'JTRACK_BACKGROUND_PROBE_ENABLED',
+        environ=environ,
+    ):
+        return background_probe_json_response(
+            start_response,
+            '404 Not Found',
+            {'message': 'Background probe is disabled.'},
+        )
+
+    if environ.get('REQUEST_METHOD') != 'POST':
+        return background_probe_json_response(
+            start_response,
+            '405 Method Not Allowed',
+            {'message': 'Expected POST request.'},
+            [('Allow', 'POST')],
+        )
+
+    content_type = environ.get('CONTENT_TYPE', '').split(';', 1)[0].strip().lower()
+    if content_type != 'application/json':
+        return background_probe_json_response(
+            start_response,
+            '415 Unsupported Media Type',
+            {'message': 'Expected application/json.'},
+        )
+
+    try:
+        content_length = int(environ.get('CONTENT_LENGTH', '0') or '0')
+    except ValueError:
+        content_length = -1
+    if content_length < 0 or content_length > BACKGROUND_PROBE_MAX_BODY_BYTES:
+        return background_probe_json_response(
+            start_response,
+            '413 Payload Too Large',
+            {'message': 'Background probe payload is too large.'},
+        )
+
+    request_body = environ['wsgi.input'].read(
+        BACKGROUND_PROBE_MAX_BODY_BYTES + 1
+    )
+    if len(request_body) > BACKGROUND_PROBE_MAX_BODY_BYTES:
+        return background_probe_json_response(
+            start_response,
+            '413 Payload Too Large',
+            {'message': 'Background probe payload is too large.'},
+        )
+
+    try:
+        payload = json.loads(request_body.decode('utf-8'))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        payload = None
+
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {'requestId'}
+        or not isinstance(payload.get('requestId'), str)
+    ):
+        return background_probe_json_response(
+            start_response,
+            '400 Bad Request',
+            {'message': 'Expected an object containing only requestId.'},
+        )
+
+    try:
+        parsed_request_id = uuid.UUID(payload['requestId'])
+    except (ValueError, AttributeError, TypeError):
+        parsed_request_id = None
+    if (
+        parsed_request_id is None
+        or str(parsed_request_id) != payload['requestId'].lower()
+    ):
+        return background_probe_json_response(
+            start_response,
+            '400 Bad Request',
+            {'message': 'requestId must be a canonical UUID.'},
+        )
+
+    request_id = str(parsed_request_id)
+    try:
+        receipt = record_background_probe_receipt(request_id, environ)
+    except BackgroundProbeRateLimitError:
+        retry_after = positive_environment_integer(
+            'JTRACK_BACKGROUND_PROBE_RATE_WINDOW_SECONDS',
+            BACKGROUND_PROBE_RATE_WINDOW_SECONDS_DEFAULT,
+            environ,
+        )
+        return background_probe_json_response(
+            start_response,
+            '429 Too Many Requests',
+            {'message': 'Background probe rate limit exceeded.'},
+            [('Retry-After', str(retry_after))],
+        )
+    except BackgroundProbeStoreError:
+        return background_probe_json_response(
+            start_response,
+            '503 Service Unavailable',
+            {'message': 'Background probe receipt could not be recorded.'},
+        )
+
+    return background_probe_json_response(
+        start_response,
+        '200 OK',
+        receipt,
+    )
 
 
 # compare MD5 values
@@ -1002,6 +1295,11 @@ def write_output_message(message):
 
 # This method is called by the main endpoint
 def application(environ, start_response):
+    # This opt-in diagnostic route intentionally bypasses participant payload
+    # validation and the legacy MD5 header. It records no participant activity.
+    if environ.get('HTTP_ACTION') == 'background_probe':
+        return handle_background_probe(environ, start_response)
+
     status = "200 OK"
     # We only accept POST-requests
     # environ['CONTENT_LENGTH'] = '10000000'
